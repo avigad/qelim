@@ -50,6 +50,9 @@ end
 
 def allp (P : α → Prop) (l : list α) := ∀ a, a ∈ l → P a
 
+lemma allp_nil {P : α → Prop} : allp P [] :=
+begin intros _ H, cases H end
+
 lemma cases_first (P : α → Prop) [HD : decidable_pred P] : ∀ (as : list α), 
 (list.first P as = none ∧ allp (λ x, ¬ P x) as) 
 ∨ ∃ (a) (as'), (list.first P as = some (a,as') ∧ P a ∧ list.eqmem as (a::as'))

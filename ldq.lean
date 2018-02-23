@@ -190,7 +190,7 @@ lemma ldq_prsv [atom α β] (qe : list α → fm α)
     apply mem_of_mem_filter,
     apply Ha, rewrite exp_I_list_conj,
     rewrite map_compose, unfold all_true, 
-    intros q Hq, cases (exp_mem_map _ Hq) with a Ha,
+    intros q Hq, cases (exp_mem_map Hq) with a Ha,
     simp at Ha, rewrite Ha^.elim_left, 
     cases H3 with b Hb, unfold I, unfold interp,
     rewrite decr_prsv a _ b, apply Hb, 
