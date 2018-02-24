@@ -97,6 +97,11 @@ lemma nth_dft_pred {a a' : α} {l : list α} {n : nat} (H : n > 0) :
 list.nth_dft a (a'::l) n = list.nth_dft a l (n - 1) :=
 begin unfold list.nth_dft, rewrite nth_pred, apply H  end
 
+lemma nth_dft_head {a a' : α} {as : list α} : list.nth_dft a' (a::as) 0 = a := sorry
+
+-- lemma nth_dft_cons {a a' : α} {as : list α} {n} : 
+  -- list.nth_dft a' (a::as) (n+1) = list.nth_dft a' as n := sorry 
+
 def append_pair {α : Type} : (list α × list α) → list α  
 | (l1,l2) := l1 ++ l2 
 

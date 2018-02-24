@@ -58,7 +58,7 @@ lemma ldq_qfree [atom α β] (qe : list α → fm α)
   end
 
 def is_dnf_qe (β : Type) [atom α β] (qe : list α → fm α) (as : list α) : Prop := 
-  ∀ (xs : list β), (I (qe as) xs = ∃ x, (∀ a, a ∈ as → I_a a (x::xs)))
+  ∀ (xs : list β), (I (qe as) xs = ∃ x, (∀ a, a ∈ as → val a (x::xs)))
 
 lemma foo (Q : list β → α → Prop) (a : α) : ∀ (bss : list (list β)), 
   list.map (λ bs, Q bs a) bss = list.map (λ (P : α → Prop), P a) (list.map Q bss)  
@@ -167,7 +167,7 @@ lemma ldq_prsv [atom α β] (qe : list α → fm α)
     apply (dnf_prsv _ _ (x::xs)), 
     apply nnf_nqfree, apply ldq_qfree, apply H1, 
     apply eq.trans, apply ex_eq_ex, intro b,
-    rewrite (@foo β α (λ (as : list α) (b : β), ∀ (a : α), a ∈ as → I_a a (b :: xs))), 
+    rewrite (@foo β α (λ (as : list α) (b : β), ∀ (a : α), a ∈ as → val a (b :: xs))), 
     apply eq.trans, 
     apply @dist_ex_disj_list α β _,
     unfold disj, apply eq.symm,

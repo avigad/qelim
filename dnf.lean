@@ -14,7 +14,7 @@ def dnf : fm α → list (list α)
 | _ := []
 
 lemma dnf_prsv [atom α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β), 
-  disj_list (list.map (λ (as : list α), ∀ a, a ∈ as → atom.I_a a xs) (dnf p)) = I p xs 
+  disj_list (list.map (λ (as : list α), ∀ a, a ∈ as → atom.val a xs) (dnf p)) = I p xs 
 | (fm.true α) H bs := 
   by {unfold dnf, simp, unfold disj_list, 
       rewrite exp_I_top, simp}
@@ -44,7 +44,7 @@ lemma dnf_prsv [atom α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β),
     simp at Hd, 
     apply and.intro, 
 
-    existsi (∀ (a : α), a ∈ (prod.fst d) → atom.I_a a bs),
+    existsi (∀ (a : α), a ∈ (prod.fst d) → atom.val a bs),
     apply and.intro, apply mem_map_of_mem,
     apply fst_mem_of_mem_product Hd^.elim_right,
     intros a Ha, rewrite Hd^.elim_left at Hrr,
@@ -52,7 +52,7 @@ lemma dnf_prsv [atom α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β),
     apply mem_append_of_mem_or_mem,
     apply or.inl Ha, 
 
-    existsi (∀ (a : α), a ∈ (prod.snd d) → atom.I_a a bs),
+    existsi (∀ (a : α), a ∈ (prod.snd d) → atom.val a bs),
     apply and.intro, apply mem_map_of_mem, 
     apply snd_mem_of_mem_product Hd^.elim_right,
     intros a Ha, rewrite Hd^.elim_left at Hrr,
@@ -65,7 +65,7 @@ lemma dnf_prsv [atom α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β),
     cases (H0^.elim_right) with s Hs, clear H0, 
     cases (exp_mem_map Hr^.elim_left) with ll Hll,
     cases (exp_mem_map Hs^.elim_left) with lr Hlr,
-    existsi (∀ (a : α), a ∈ append_pair (ll,lr) → atom.I_a a bs),
+    existsi (∀ (a : α), a ∈ append_pair (ll,lr) → atom.val a bs),
     apply and.intro, apply mem_map_of_mem, 
     apply mem_product_of_mem_of_mem,
     apply Hll^.elim_left, apply Hlr^.elim_left,
