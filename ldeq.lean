@@ -94,15 +94,6 @@ begin
   rewrite Ha'^.elim_right, simp 
 end
 
-lemma ldeq_prsv [atomeq α β] (qe : list α → fm α) (as : list α) 
-  (Hqe : ∀ (as') (Has' : allp (@atom.dep0 α β _) as'), qfree (qe as')) 
-  (Has : ∀ (as' : list α), (∀ (a' : α), a' ∈ as' → atom.dep0 β a' ∧ ¬ solv0 β a') → is_dnf_qe β qe as')  
-  (p : fm α) (bs : list β) : I (lift_dnfeq_qe β qe p) bs = I p bs := 
-begin
-  unfold lift_dnfeq_qe, apply ldq_prsv, apply leq_qfree,
-  apply Hqe, apply leq_is_dnf_qe, apply Has
-end
-
 lemma ldeq_qfree [atomeq α β] (qe : list α → fm α) 
   (Hqe : ∀ (as') (Has' : allp (@atom.dep0 α β _) as'), qfree (qe as')) 
   (p : fm α) : qfree (lift_dnfeq_qe β qe p) := 
@@ -110,4 +101,13 @@ begin
   unfold lift_dnfeq_qe, apply ldq_qfree, 
   intros as Has, apply leq_qfree, apply Hqe,
   apply Has
+end
+
+lemma ldeq_prsv [atomeq α β] (qe : list α → fm α) 
+  (Hqe : ∀ (as) (Has : allp (@atom.dep0 α β _) as), qfree (qe as)) 
+  (Has : ∀ (as : list α), (∀ (a' : α), a' ∈ as → atom.dep0 β a' ∧ ¬ solv0 β a') → is_dnf_qe β qe as)  
+  (p : fm α) (bs : list β) : I (lift_dnfeq_qe β qe p) bs = I p bs := 
+begin
+  unfold lift_dnfeq_qe, apply ldq_prsv, apply leq_qfree,
+  apply Hqe, apply leq_is_dnf_qe, apply Has
 end

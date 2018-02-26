@@ -1,5 +1,13 @@
 variables {α β γ : Type}
 
+def list.omap (f : α → option β) : list α → list β  
+| [] := []
+| (a::as) := 
+  match f a with 
+  | none := list.omap as 
+  | (some b) := b::(list.omap as) 
+  end
+
 def list.product : list α → list β → list (α × β) 
 | [] _ := []
 | (a1::l1) l2 := (list.map (λ a2, ⟨a1,a2⟩) l2) ++ list.product l1 l2 
@@ -49,9 +57,38 @@ begin
 end
 
 def allp (P : α → Prop) (l : list α) := ∀ a, a ∈ l → P a
+def anyp (P : α → Prop) (l : list α) := ∃ a, a ∈ l ∧ P a
 
 lemma allp_nil {P : α → Prop} : allp P [] :=
 begin intros _ H, cases H end
+
+lemma allp_tail_of_allp {P : α → Prop} {a} {as} : allp P (a::as) → allp P as := sorry
+
+lemma not_mem_tail_of_not_mem {a' a : α} {as} : a' ∉ (a::as) → a' ∉ as := sorry
+
+lemma cases_dite {P} {Q : α → Prop} {HD : decidable P} {f : P → α} {g : (¬ P) → α} 
+  (Hf : ∀ (HP : P), Q (f HP)) (Hg : ∀ (HP : ¬ P), Q (g HP)) : 
+  Q (dite P f g) := sorry
+
+lemma eq_true_or_eq_false_of_dec (P) [HP : decidable P] : P = true ∨ P = false :=
+begin
+  cases HP, 
+  apply or.inr, rewrite eq_false, simp *,
+  apply or.inl, rewrite eq_true, simp *,
+end
+
+lemma decidable_allp {P : α → Prop} [HP : decidable_pred P] : decidable_pred (allp P)  
+| [] := is_true (by apply allp_nil)
+| (a::as) := 
+  begin
+    cases (HP a) with HP HP, apply is_false, intro HC,  
+    apply absurd (HC a (or.inl (by refl))) HP,
+    cases (decidable_allp as) with Has Has, 
+    apply is_false, intro HC, apply Has, 
+    intros x Hx, apply HC, apply or.inr Hx, 
+    apply is_true, intros x Hx, cases Hx with Hx Hx,
+    rewrite Hx, apply HP, apply Has x Hx 
+  end
 
 lemma cases_first (P : α → Prop) [HD : decidable_pred P] : ∀ (as : list α), 
 (list.first P as = none ∧ allp (λ x, ¬ P x) as) 
@@ -97,10 +134,8 @@ lemma nth_dft_pred {a a' : α} {l : list α} {n : nat} (H : n > 0) :
 list.nth_dft a (a'::l) n = list.nth_dft a l (n - 1) :=
 begin unfold list.nth_dft, rewrite nth_pred, apply H  end
 
-lemma nth_dft_head {a a' : α} {as : list α} : list.nth_dft a' (a::as) 0 = a := sorry
-
--- lemma nth_dft_cons {a a' : α} {as : list α} {n} : 
-  -- list.nth_dft a' (a::as) (n+1) = list.nth_dft a' as n := sorry 
+lemma nth_dft_head {a a' : α} {as : list α} : list.nth_dft a' (a::as) 0 = a := 
+begin unfold list.nth_dft, simp end
 
 def append_pair {α : Type} : (list α × list α) → list α  
 | (l1,l2) := l1 ++ l2 

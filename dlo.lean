@@ -17,6 +17,8 @@ inductive adlo : Type
 notation x `<'` y := adlo.lt x y 
 notation x `='` y := adlo.eq x y 
 
+def tval [dlo β] (n) (bs : list β) := list.nth_dft (inh _) bs n
+
 def dlo_val [dlo β] : adlo → list β → Prop 
 | (adlo.lt m n) l := (list.nth_dft (inh _) l m) < (list.nth_dft (inh _) l n) 
 | (adlo.eq m n) l := (list.nth_dft (inh _) l m) = (list.nth_dft (inh _) l n) 
@@ -271,6 +273,8 @@ begin
   cases Ha
 end
 
+instance : decidable_eq adlo := by tactic.mk_dec_eq_instance
+
 lemma dlo_atomeq [H : dlo β] : atomeq adlo β := 
 { val := dlo_val,
   aneg := adlo_aneg,
@@ -322,56 +326,85 @@ def lt_single_0 : adlo → Prop
 | (adlo.lt 0 _) := true
 | (adlo.lt (i+1) (j+1)) := false
 
-def qe_dlo_aux : ∀ (l : list adlo) (H : allp lt_single_0 l), (list nat × list nat)
+instance : decidable_pred lt_has_0 := sorry
+
+lemma dlo_dec_mem : ∀ (a : adlo) (as : list adlo), decidable (a ∈ as) := 
+list.decidable_mem 
+
+def get_lb : adlo → option nat 
+| (m+1 <' 0) := some m
+| _ := none
+
+def get_ub : adlo → option nat 
+| (0 <' n+1) := some n
+| _ := none
+
+def dlo_qe_lbs  (as : list adlo) : list nat := 
+list.omap get_lb as
+
+def dlo_qe_ubs  (as : list adlo) : list nat := 
+list.omap get_ub as
+
+def dlo_qe_split : ∀ (l : list adlo) (H : allp lt_single_0 l), (list nat × list nat)
 | [] := λ _, ([],[]) 
 | (a::as) :=
   match a with 
   | (adlo.eq m n) := begin intro H, exfalso, apply H _ (or.inl (eq.refl _)) end
   | (adlo.lt 0 0) := begin intro H, exfalso, apply H _ (or.inl (eq.refl _)) end
   | (adlo.lt (i+1) 0) := 
-    λ H, let (lbs,rbs) := qe_dlo_aux as 
+    λ H, let (lbs,rbs) := dlo_qe_split as 
       (begin intros a' Ha', apply H a' (or.inr Ha') end) in 
       (i::lbs,rbs)
   | (adlo.lt 0 (j+1)) := 
-    λ H, let (lbs,rbs) := qe_dlo_aux as 
+    λ H, let (lbs,rbs) := dlo_qe_split as 
       (begin intros a' Ha', apply H a' (or.inr Ha') end) in 
       (lbs,j::rbs)
   | (adlo.lt (i+1) (j+1)) := begin intro H, exfalso, apply H _ (or.inl (eq.refl _)) end
   end
 
-#exit
-lemma allp_single_0_of : ∀ (as : list adlo) (H : allp as lt_has_0) (HZ : (0 <' 0) ∉ as), allp as lt_single_0  
-| [] _ _ := trivial 
+lemma allp_single_0_of : ∀ (as : list adlo) (H : allp lt_has_0 as) (HZ : (0 <' 0) ∉ as), allp lt_single_0 as
+| [] _ _ := begin intros _ Ha, cases Ha end 
 | ((adlo.eq _ _)::as) H HZ := 
-  begin exfalso, apply H^.elim_left end
+  begin exfalso, apply (H _ (or.inl (by refl))) end
 | ((adlo.lt 0 0)::as) H HZ := 
   begin exfalso, apply HZ, apply or.inl, refl end
 | ((adlo.lt (i+1) 0)::as) H HZ := 
   begin 
-    apply and.intro trivial, 
-    apply allp_single_0_of as H^.elim_right, 
-    intro HC, apply HZ, apply or.inr HC
+    intros a Ha, 
+    unfold has_mem.mem at Ha, 
+    unfold list.mem at Ha, 
+    cases Ha with Ha Ha, 
+    rewrite Ha, trivial,
+    apply allp_single_0_of, 
+    apply allp_tail_of_allp H,
+    apply not_mem_tail_of_not_mem HZ, 
+    apply Ha
   end
 | ((adlo.lt 0 (j+1))::as) H HZ := 
   begin
-    apply and.intro trivial, 
-    apply allp_single_0_of as H^.elim_right, 
-    intro HC, apply HZ, apply or.inr HC
+    intros a Ha, 
+    unfold has_mem.mem at Ha, 
+    unfold list.mem at Ha, 
+    cases Ha with Ha Ha, 
+    rewrite Ha, trivial,
+    apply allp_single_0_of, 
+    apply allp_tail_of_allp H,
+    apply not_mem_tail_of_not_mem HZ, 
+    apply Ha
   end
 | ((adlo.lt (i+1) (j+1))::as) H HZ := 
-  begin exfalso, apply H^.elim_left end
-
-def qe_dlo [decidable_eq adlo] (as : list adlo) (H : allp as lt_has_0) : fm adlo := 
-if HZ : (adlo.lt 0 0) ∈ as
-then ⊥' 
-else let (lbs,rbs) := qe_dlo_aux as (allp_single_0_of as H HZ) in 
-     let prs := list.product lbs rbs in 
-     list_conj $ list.map (λ pr, A' (prod.fst pr <' prod.snd pr)) prs
-
-
+  begin exfalso, apply (H _ (or.inl (by refl))) end
 
 #exit
 
+def qe_dlo
+if HZ : (adlo.lt 0 0) ∈ as
+then ⊥' 
+else if H : allp lt_has_0 as
+     then let (lbs,rbs) := dlo_qe_split as (allp_single_0_of as H HZ) in 
+          let prs := list.product lbs rbs in 
+          list_conj $ list.map (λ pr, A' (prod.fst pr <' prod.snd pr)) prs
+     else ⊥'
 
 def dlo_qelim [atom adlo β] : fm adlo → fm adlo :=   
 @lift_nnf_qe _ β _ dlo_qe 
