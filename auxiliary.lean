@@ -1,5 +1,20 @@
 variables {α β γ : Type}
 
+lemma iff_of_eq {p q} : p = q → (p ↔ q) :=
+begin intro h, rewrite h end
+
+lemma exp_ite_true (p : Prop) [hd : decidable p] (h : p) (x y : α) : ite p x y = x := 
+begin
+  unfold ite, cases hd with hd hd, exfalso, 
+  apply hd h, simp, 
+end
+
+lemma exp_ite_false (p : Prop) [hd : decidable p] (h : ¬ p) (x y : α) : ite p x y = y := 
+begin
+  unfold ite, cases hd with hd hd, simp, 
+  exfalso, apply h hd
+end
+
 def list.omap (f : α → option β) : list α → list β  
 | [] := []
 | (a::as) := 
@@ -8,9 +23,14 @@ def list.omap (f : α → option β) : list α → list β
   | (some b) := b::(list.omap as) 
   end
 
+lemma mem_omap {f : α → option β} {a} {as : list α} {b} (HM : a ∈ as) (HE : f a = some b) : 
+b ∈ list.omap f as := sorry
+
 def list.product : list α → list β → list (α × β) 
 | [] _ := []
 | (a1::l1) l2 := (list.map (λ a2, ⟨a1,a2⟩) l2) ++ list.product l1 l2 
+
+lemma product_nil {l : list α} : list.product l (@list.nil β) = [] := sorry 
 
 def list.first (p : α → Prop) [decidable_pred p] : list α → option (α × list α)
 | []      := none 
@@ -57,14 +77,22 @@ begin
 end
 
 def allp (P : α → Prop) (l : list α) := ∀ a, a ∈ l → P a
+
 def anyp (P : α → Prop) (l : list α) := ∃ a, a ∈ l ∧ P a
 
 lemma allp_nil {P : α → Prop} : allp P [] :=
 begin intros _ H, cases H end
 
+lemma allp_of_allp {P Q : α → Prop} (H : ∀ a, P a → Q a) 
+  (as) (HP : allp P as) : allp Q as :=
+begin intros a Ha, apply H, apply HP, apply Ha end
+
 lemma allp_tail_of_allp {P : α → Prop} {a} {as} : allp P (a::as) → allp P as := sorry
 
 lemma not_mem_tail_of_not_mem {a' a : α} {as} : a' ∉ (a::as) → a' ∉ as := sorry
+
+lemma cases_ite {P} {Q : α → Prop} {HD : decidable P} {f g : α} 
+  (Hf : P → Q f) (Hg : ¬ P → Q g) : Q (ite P f g) := sorry
 
 lemma cases_dite {P} {Q : α → Prop} {HD : decidable P} {f : P → α} {g : (¬ P) → α} 
   (Hf : ∀ (HP : P), Q (f HP)) (Hg : ∀ (HP : ¬ P), Q (g HP)) : 
@@ -133,6 +161,20 @@ begin cases n, cases H, simp end
 lemma nth_dft_pred {a a' : α} {l : list α} {n : nat} (H : n > 0) : 
 list.nth_dft a (a'::l) n = list.nth_dft a l (n - 1) :=
 begin unfold list.nth_dft, rewrite nth_pred, apply H  end
+
+lemma nth_dft_succ {a a' : α} {l : list α} {n : nat} : 
+list.nth_dft a (a'::l) (n+1) = list.nth_dft a l n :=
+begin unfold list.nth_dft, simp  end
+
+lemma true_iff_true {p q} : p → q → (p ↔ q) := 
+by {intros hp hq, apply iff.intro ; intro _, apply hq, apply hp}
+
+lemma false_iff_false {p q} : ¬ p → ¬ q → (p ↔ q) := 
+begin
+  intros hnp hnq, apply iff.intro, 
+  intro hp, apply absurd hp hnp,
+  intro hq, apply absurd hq hnq
+end
 
 lemma nth_dft_head {a a' : α} {as : list α} : list.nth_dft a' (a::as) 0 = a := 
 begin unfold list.nth_dft, simp end

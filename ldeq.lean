@@ -29,10 +29,10 @@ begin
       apply atomeq.dec_triv end) as)) with HC HC,
   rewrite HC^.elim_left, 
   unfold lift_eq_qe, unfold is_dnf_qe at H,
-  apply eq.trans, apply H, intros a Ha, 
+  apply iff.trans, apply H, intros a Ha, 
   apply and.intro, apply Has, apply mem_of_mem_filter Ha,
   apply HC^.elim_right, apply Ha, 
-  apply propext, apply ex_iff_ex, intro b, 
+  apply ex_iff_ex, intro b, 
   apply iff.intro, intros HL a Ha, 
   cases (dec_triv α β a) with HT HT, apply HL,
   apply mem_filter_of_pred_and_mem, apply HT, apply Ha,
@@ -44,8 +44,7 @@ begin
   rewrite H1, unfold lift_eq_qe,
   rewrite exp_I_list_conj, rewrite map_compose, 
   
-  apply propext, apply iff.intro, 
-  intro HL, 
+  apply iff.intro, intro HL, 
   existsi (list.nth_dft (atom.inh α β) bs ((@atomeq.dest_solv0 α β _ eqn H2)-1)),
   intros a Ha, 
   cases (dec_triv α β a) with HT HT, 
@@ -106,7 +105,7 @@ end
 lemma ldeq_prsv [atomeq α β] (qe : list α → fm α) 
   (Hqe : ∀ (as) (Has : allp (@atom.dep0 α β _) as), qfree (qe as)) 
   (Has : ∀ (as : list α), (∀ (a' : α), a' ∈ as → atom.dep0 β a' ∧ ¬ solv0 β a') → is_dnf_qe β qe as)  
-  (p : fm α) (bs : list β) : I (lift_dnfeq_qe β qe p) bs = I p bs := 
+  (p : fm α) (bs : list β) : I (lift_dnfeq_qe β qe p) bs ↔ I p bs := 
 begin
   unfold lift_dnfeq_qe, apply ldq_prsv, apply leq_qfree,
   apply Hqe, apply leq_is_dnf_qe, apply Has

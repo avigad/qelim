@@ -2,21 +2,18 @@ import .dlo
 
 variables {α β : Type}
 
-#check @list.map
-
-def dlo_qe_aux (as) (HZ) (H) := 
-let lbsrbs := dlo_qe_split as (allp_single_0_of as H HZ) in 
-let prs := list.product lbsrbs^.fst lbsrbs^.snd in 
+def dlo_qe_aux (as : list adlo) := -- (HZ) (H) := 
+let prs := list.product (dlo_qe_lbs as) (dlo_qe_ubs as) in 
 list_conj $ @list.map adlo (fm adlo) (@fm.atom adlo) (list.map (λ pr, (prod.fst pr <' prod.snd pr)) prs)
 
 def dlo_qe (β : Type) [atomeq adlo β] (as : list adlo) : fm adlo := 
-@dite (adlo.lt 0 0 ∈ as) 
-  (@list.decidable_mem adlo (atom.dec_eq _ β) (0 <' 0) _) _ 
-  (λ _, ⊥')
-  (λ HZ, @dite (allp lt_has_0 as) 
+@ite (adlo.lt 0 0 ∈ as) 
+  (@list.decidable_mem adlo (atom.dec_eq _ β) (0 <' 0) as) _
+  ⊥'
+  (@ite (allp is_b_atm as) 
     (decidable_allp _) _ 
-    (dlo_qe_aux as HZ)
-    (λ _, ⊥')
+    (dlo_qe_aux as)
+    (⊥')
   )
 
 def dlo_qelim (β : Type) [atomeq adlo β] : fm adlo → fm adlo :=  
@@ -28,11 +25,9 @@ lemma dlo_qe_qfree [HA : atomeq adlo β] :
     qfree (dlo_qe β as) := 
 begin
   intros as Has, unfold dlo_qe, 
-  apply cases_dite, intro H, trivial, 
-  intro HM, 
-  apply cases_dite, intro Hlt, 
-  unfold dlo_qe_aux,
-  simp, apply list_conj_qfree,
+  apply cases_ite, intro H, trivial, 
+  intro HM, apply cases_ite, intro Hlt,
+  unfold dlo_qe_aux, simp, apply list_conj_qfree,
   intros x Hx, 
   cases (exp_mem_map Hx) with y Hy,
   cases Hy with Hyl Hyr, rewrite Hyr,
@@ -40,78 +35,149 @@ begin
   intro H, trivial
 end
 
-lemma exp_dlo_qe [atomeq adlo β] {as} 
-  (Has : ∀ (a : adlo), a ∈ as → atom.dep0 β a ∧ ¬atomeq.solv0 β a) {xs : list β} :
-∃ H HZ, dlo_qe β as = @dlo_qe_aux as HZ H := sorry
+lemma btw_of_lt [dlo β] {m n} {bs : list β} (H : atom.val (m<' n) bs) :
+  ∃ b, ((tval m bs < b) ∧ (b < tval n bs)) :=  
+begin
+  cases (dlo.btw H) with b Hb, 
+  existsi b, apply Hb
+end
 
-def is_lb (m) (as : list adlo) := (m+1 <' 0) ∈ as
-def is_ub (n) (as : list adlo) := (0 <' n+1) ∈ as
+lemma is_b_atm_of [dlo β] : 
+  ∀ (a), (λ a', atom.dep0 β a' ∧ ¬atomeq.solv0 β a' ∧ a' ≠ (0 <' 0)) a → is_b_atm a := sorry
+
+lemma is_b_atm_iff_dep0_and_not_solv0 [dlo β] {a} :
+  is_b_atm a ↔ (atom.dep0 β a ∧ ¬atomeq.solv0 β a) := sorry
 
 lemma ex_high_lb_of_ex_lb [dlo β] {as : list adlo} (Hlb : ∃ m, is_lb m as) (bs : list β) :
-∃ k, (is_lb k as ∧ ∀ j, is_lb j as → tval j bs ≤ tval k bs) := sorry
+∃ k, (is_lb k as ∧ ∀ j, is_lb j as → dle j k bs) := sorry
 
 lemma ex_low_ub_of_ex_ub [dlo β] {as : list adlo} (Hub : ∃ n, is_ub n as) (bs : list β) :
-∃ k, (is_ub k as ∧ ∀ j, is_ub j as → tval k bs ≤ tval j bs) := sorry
-/-
-lemma no_lb_or_ex_high_lb [dlo β] (as : list adlo) (bs : list β) : 
-  (∀ m, ¬ is_lb m as) 
-  ∨ (∃ m, is_lb m as 
-          ∧ ∀ k, is_lb k as → tval k bs ≤ tval m bs) := sorry 
+∃ k, (is_ub k as ∧ ∀ j, is_ub j as → dle k j bs) := sorry
 
-lemma no_ub_or_ex_low_ub [dlo β] (as : list adlo) (bs : list β) : 
-  (∀ n, ¬ is_ub n as) 
-  ∨ (∃ n, is_ub n as 
-          ∧ ∀ k, is_ub k as → tval n bs ≤ tval k bs) := sorry 
+lemma lt_of_lt_of_lte [dlo β] {k m n} {bs : list β} : dle k m bs → dlt m n bs → dlt k n bs := sorry
+lemma lt_of_lte_of_lt [dlo β] {k m n} {bs : list β} : dlt k m bs → dle m n bs → dlt k n bs := sorry
 
-lemma eq_nil_of_no_bound {as} (Hlt : allp lt_has_0 as)
- (Hlb : ∀ (m : ℕ), ¬is_lb m as) (Hub : ∀ (n : ℕ), ¬is_ub n as) : as = [] :=
-begin
-  cases as with a' as', refl, cases a' with x y x y,
-  cases x with x, exfalso, apply Hub y, apply or.inl, refl,
-  cases y with y, exfalso, apply Hlb, 
-  apply or.inl, refl, exfalso,
-  apply (Hlt _ (or.inl (by refl))),
-  exfalso, apply (Hlt _ (or.inl (by refl)))
-end
--/ 
-
-#check @classical.by_cases
-lemma dlo_qe_is_dnf [dlo β] [atomeq adlo β] : ∀ (as : list adlo), 
+lemma dlo_qe_is_dnf [HD : dlo β] : ∀ (as : list adlo), 
   (∀ (a : adlo), a ∈ as → atom.dep0 β a ∧ ¬ atomeq.solv0 β a) 
   → is_dnf_qe β (dlo_qe β) as := 
 begin
-  intros as Has, unfold is_dnf_qe, intro bs, 
-  cases (exp_dlo_qe Has) with H1 H2,
-  cases H2 with H2 H3, rewrite H3, 
-  unfold dlo_qe_aux, simp, 
+  intros as Has,
+  unfold is_dnf_qe, intro bs, 
+  unfold dlo_qe, unfold dlo_qe_aux, simp, 
+  cases (@list.decidable_mem adlo (atom.dec_eq _ β) (0 <' 0) as) with Hc Hc,
+  rewrite (exp_ite_false), 
+ 
+  have HW : allp is_b_atm as := 
+  begin
+    apply allp_of_allp is_b_atm_of, intros a' Ha', 
+    cases Has a' Ha' with Ha1' Ha2',
+    apply and.intro Ha1',  
+    apply and.intro Ha2', intro HN, 
+    apply Hc, subst HN, apply Ha'  
+  end, clear Has, clear Hc, 
+
+  rewrite (exp_ite_true), 
+  unfold function.comp, rewrite exp_I_list_conj,  
 
   apply @classical.by_cases (∃ m, is_lb m as) ; intro Hlb,
-  apply @classical.by_cases (∃ n, is_ub n as) ; intro Hub,
-  
   cases (ex_high_lb_of_ex_lb Hlb bs) with m Hm, clear Hlb,
+  cases Hm with Hm1 Hm2, 
+
+  apply @classical.by_cases (∃ n, is_ub n as) ; intro Hub,
   cases (ex_low_ub_of_ex_ub Hub bs) with n Hn, clear Hub,
-  apply @eq.trans _ _ (I (A' (m <' n)) bs),
-  rewrite exp_I_list_conj,
-  rewrite map_compose, apply propext, 
+  cases Hn with Hn1 Hn2, 
+
+  apply @iff.trans _ (I (A' (m <' n)) bs),
+  rewrite map_compose,
   apply iff.intro, intro HL, apply HL, 
   apply @mem_map_of_mem _ _ (λ (x : ℕ × ℕ), I ((fm.atom ∘ λ (pr : ℕ × ℕ), pr.fst<' pr.snd) x) bs) _ (m,n),  
   apply mem_product_of_mem_of_mem,
+  apply mem_omap Hm1, refl, 
+  apply mem_omap Hn1, refl, 
+  intro HR, intros a Ha, 
+  cases (exp_mem_map Ha) with pr Hpr,
+  cases Hpr with Hpr1 Hpr2, subst Hpr2,
+  cases pr with x y, simp, simp at Ha, 
+  cases (exp_mem_map Ha) with xy Hxy, 
+  cases xy with x' y', simp at Hxy,
+  cases Hxy with Hxy1 Hxy2, rewrite Hxy2,
+  apply lt_of_lt_of_lte (Hm2 _ _), 
+  apply lt_of_lte_of_lt _ (Hn2 _ _), 
+  apply HR, 
+  have Hy := snd_mem_of_mem_product Hxy1, simp at Hy,
+  apply is_ub_of_mem_ubs, apply Hy, 
+  have Hx := fst_mem_of_mem_product Hxy1, simp at Hx,
+  apply is_lb_of_mem_lbs, apply Hx, 
+  apply iff.intro; intro H, 
+  cases (btw_of_lt H) with b Hb, cases Hb with Hb1 Hb2,
+  existsi b, intros a Ha, 
 
-  -- cases (no_lb_or_ex_high_lb as bs) with Hlb Hlb,
-  --cases (no_ub_or_ex_low_ub as bs) with Hub Hub,
+  cases (HW a Ha) with k Ha', cases Ha' with Ha' Ha'; subst Ha',
+  unfold I, unfold interp, rewrite exp_val_lt,
+  rewrite nth_dft_succ, rewrite nth_dft_head, 
+  apply lt_of_le_of_lt, 
+  apply le_of_dle (Hm2 k Ha), apply Hb1,
+  unfold I, unfold interp, rewrite exp_val_lt,
+  rewrite nth_dft_succ, rewrite nth_dft_head, 
+  apply lt_of_lt_of_le, 
+  apply Hb2, apply le_of_dle (Hn2 k Ha), 
+  cases H with b Hb, unfold I, unfold interp,
+  have HE := (atom.decr_prsv (m+1 <' n+1) _ b bs),
+  rewrite (exp_decr_lt (m+1) (n+1)) at HE, simp at HE,
+  rewrite HE, clear HE, 
+  apply lt_trans, 
+  let Hbm := Hb _ Hm1, 
+  unfold I at Hbm, unfold interp at Hbm, apply Hbm,
+  let Hbn := Hb _ Hn1, 
+  unfold I at Hbn, unfold interp at Hbn, apply Hbn,
+  intro Hc', cases Hc' with Hc' Hc'; cases Hc', 
 
-  --cases as with a' as',
-  --simp, unfold dlo_qe_split, simp, 
-  --unfold list.product, unfold list.map,
-  --unfold list_conj, rewrite exp_I_top, 
-  --apply eq.symm, rewrite eq_true,
-  --existsi (atom.inh adlo β), trivial, 
+  apply true_iff_true,  
+  rewrite (ubs_eq_nil_of_none_is_ub Hub), 
+  rewrite product_nil, simp, apply all_true_nil,
+  cases (dlo.abv (tval m bs)) with u Hu, 
+  existsi u, intros a Ha, 
+  cases (HW a Ha) with k Ha', cases Ha' with Ha' Ha'; subst Ha',
+  unfold I, unfold interp, rewrite exp_val_lt,
+  rewrite nth_dft_succ, rewrite nth_dft_head, 
+  apply lt_of_le_of_lt, 
+  apply le_of_dle (Hm2 k Ha), apply Hu, 
+  exfalso, apply Hub, existsi k, apply Ha,
 
-  --cases (eq_nil_of_no_bound H1 Hlb Hub),
+  apply @classical.by_cases (∃ n, is_ub n as) ; intro Hub,
+  cases (ex_low_ub_of_ex_ub Hub bs) with n Hn, clear Hub,
+  cases Hn with Hn1 Hn2, 
+
+  apply true_iff_true,  
+  rewrite (lbs_eq_nil_of_none_is_lb Hlb), 
+  simp, apply all_true_nil, 
+  cases (dlo.blw (tval n bs)) with l Hl, 
+  existsi l, intros a Ha, 
+  cases (HW a Ha) with k Ha', cases Ha' with Ha' Ha'; subst Ha',
+  exfalso, apply Hlb, existsi k, apply Ha,
+  unfold I, unfold interp, rewrite exp_val_lt,
+  rewrite nth_dft_succ, rewrite nth_dft_head, 
+  apply lt_of_lt_of_le, apply Hl,
+  apply le_of_dle (Hn2 k Ha), 
+  
+  cases as with a, simp, unfold dlo_qe_lbs, 
+  unfold list.omap, unfold list.product, 
+  unfold list.map, apply true_iff_true,
+  intros _ Hx, cases Hx, existsi (@dlo.inh β HD), 
+  trivial, cases (HW _ (or.inl rfl)) with k Hk,
+  cases Hk with Hk Hk, 
+  exfalso, apply Hlb, existsi k, subst Hk, apply or.inl rfl, 
+  exfalso, apply Hub, existsi k, subst Hk, apply or.inl rfl, 
+  apply HW, apply Hc, 
+
+  rewrite exp_ite_true, apply false_iff_false,
+  intro h, apply h, 
+  intro h, cases h with b hb, 
+  apply (lt_irrefl b), 
+  apply (hb _ Hc), apply Hc
 
 end
-#check @mem_map_of_mem
 
-lemma dlo_qelim_prsv_core [dlo β] [atomeq adlo β] : 
-  ∀ (p : fm adlo) (bs : list β), I (dlo_qelim β p) bs = I p bs := 
+lemma dlo_qelim_prsv [dlo β] : 
+  ∀ (p : fm adlo) (bs : list β), I (dlo_qelim β p) bs ↔ I p bs := 
 ldeq_prsv (dlo_qe β) dlo_qe_qfree dlo_qe_is_dnf 

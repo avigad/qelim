@@ -14,7 +14,7 @@ def dnf : fm α → list (list α)
 | _ := []
 
 lemma dnf_prsv [atom α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β), 
-  disj_list (list.map (λ (as : list α), ∀ a, a ∈ as → atom.val a xs) (dnf p)) = I p xs 
+  disj_list (list.map (λ (as : list α), ∀ a, a ∈ as → atom.val a xs) (dnf p)) ↔ I p xs 
 | (fm.true α) H bs := 
   by {unfold dnf, simp, unfold disj_list, 
       rewrite exp_I_top, simp}
@@ -23,16 +23,14 @@ lemma dnf_prsv [atom α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β),
 | (fm.atom a) H bs := 
   begin
     unfold dnf, simp, unfold disj_list, simp, 
-    apply propext, apply iff.intro, 
-    intro Ha, apply Ha, refl,
+    apply iff.intro, intro Ha, apply Ha, refl,
     intros Ha a' Ha', rewrite Ha', apply Ha
   end
 | (fm.and p q) H bs := 
   begin
     unfold dnf, rewrite map_compose, rewrite exp_I_and, 
-    rewrite (eq.symm (dnf_prsv p H^.elim_left bs)),
-    rewrite (eq.symm (dnf_prsv q H^.elim_right bs)),
-    apply propext,
+    rewrite (iff.symm (dnf_prsv p H^.elim_left bs)),
+    rewrite (iff.symm (dnf_prsv q H^.elim_right bs)),
     repeat {rewrite disj_list_iff_some_true},
     repeat {unfold some_true},
 

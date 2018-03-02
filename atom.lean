@@ -56,9 +56,9 @@ lemma exp_I_or [atom α β] (p q : fm α) (xs : list β) :
   I (p ∨' q) xs = ((I p xs) ∨ (I q xs)) := eq.refl _
 
 lemma exp_I_or_o [atom α β] (p q : fm α) (xs : list β) : 
-  I (or_o p q) xs = ((I p xs) ∨ (I q xs)) := 
+  I (or_o p q) xs ↔ ((I p xs) ∨ (I q xs)) := 
 begin
-  apply (cases_or_o' (λ p q pq, ((I pq xs) = ((I p xs) ∨ (I q xs)))) p q), 
+  apply (cases_or_o' (λ p q pq, ((I pq xs) ↔ ((I p xs) ∨ (I q xs)))) p q), 
   repeat {unfold I, unfold interp, simp},
   unfold I, unfold interp 
 end

@@ -4,7 +4,7 @@ variables {α β : Type}
 
 class dlo (α : Type) extends decidable_linear_order α :=
 (inh : α)
-(btw : ∀ (x z : α), x < z → ∃ (y : α), x < y ∧ y < z)
+(btw : ∀ {x z : α}, x < z → ∃ (y : α), x < y ∧ y < z)
 (blw : ∀ (y : α), ∃ (x : α), x < y)
 (abv : ∀ (x : α), ∃ (y : α), x < y)
 
@@ -17,25 +17,26 @@ inductive adlo : Type
 notation x `<'` y := adlo.lt x y 
 notation x `='` y := adlo.eq x y 
 
-def tval [dlo β] (n) (bs : list β) := list.nth_dft (inh _) bs n
 
-def dlo_val [dlo β] : adlo → list β → Prop 
-| (adlo.lt m n) l := (list.nth_dft (inh _) l m) < (list.nth_dft (inh _) l n) 
-| (adlo.eq m n) l := (list.nth_dft (inh _) l m) = (list.nth_dft (inh _) l n) 
+def tval [H : dlo β] (n) (bs : list β) := list.nth_dft (@dlo.inh _ H) bs n
 
-def adlo_aneg : adlo → fm adlo
+def dlo_val [H : dlo β] : adlo → list β → Prop 
+| (adlo.lt m n) bs := tval m bs < tval n bs
+| (adlo.eq m n) bs := tval m bs = tval n bs
+
+def dlo_aneg : adlo → fm adlo
 | (adlo.lt m n) := (A' (adlo.eq m n)) ∨' (A' (adlo.lt n m))
 | (adlo.eq m n) := (A' (adlo.lt m n)) ∨' (A' (adlo.lt n m))
 
-lemma adlo_aneg_nqfree : ∀ (d : adlo), nqfree (adlo_aneg d)  
+lemma dlo_aneg_nqfree : ∀ (d : adlo), nqfree (dlo_aneg d)  
 | (adlo.lt m n) := and.intro trivial trivial
 | (adlo.eq m n) := and.intro trivial trivial
 
-lemma adlo_aneg_prsv [dlo β] : ∀ (d : adlo) (l : list β), 
-  interp dlo_val l (adlo_aneg d) = interp dlo_val l (¬' A' d) 
+lemma dlo_aneg_prsv [dlo β] : ∀ (d : adlo) (l : list β), 
+  interp dlo_val l (dlo_aneg d) = interp dlo_val l (¬' A' d) 
 | (adlo.lt m n) l := 
   begin
-    unfold adlo_aneg, unfold interp, 
+    unfold dlo_aneg, unfold interp, 
     unfold dlo_val, apply propext, 
     apply iff.intro, 
     intro H, apply not_lt_of_ge,
@@ -47,7 +48,7 @@ lemma adlo_aneg_prsv [dlo β] : ∀ (d : adlo) (l : list β),
   end
 | (adlo.eq m n) l := 
   begin
-    unfold adlo_aneg, unfold interp, unfold dlo_val,
+    unfold dlo_aneg, unfold interp, unfold dlo_val,
     apply propext, apply iff.intro, 
     intro H, cases H with H H, 
     apply ne_of_lt H, apply ne_of_gt H, 
@@ -58,7 +59,7 @@ def dlo_dep0 : adlo → Prop
 | (adlo.lt m n) := m = 0 ∨ n = 0
 | (adlo.eq m n) := m = 0 ∨ n = 0
 
-lemma adlo_dec_dep0 : decidable_pred dlo_dep0  
+def adlo_dec_dep0 : decidable_pred dlo_dep0  
 | (adlo.lt 0 n) := decidable.is_true (or.inl (eq.refl _))
 | (adlo.lt m 0) := decidable.is_true (or.inr (eq.refl _))
 | (adlo.lt (m+1) (n+1)) := 
@@ -79,6 +80,7 @@ lemma adlo_dec_dep0 : decidable_pred dlo_dep0
 def dlo_decr : adlo → adlo
 | (adlo.lt m n) := (adlo.lt (m-1) (n-1))
 | (adlo.eq m n) := (adlo.eq (m-1) (n-1))
+
 
 def pos_of_not_dep0_lt (m n) (H : ¬ dlo_dep0 (m <' n)) : (m > 0 ∧ n > 0) := 
 begin
@@ -102,11 +104,11 @@ begin
   apply nat.zero_lt_succ,
 end
 
-theorem dlo_atom [dlo β] : atom adlo β := 
+instance dlo_atom [dlo β] : atom adlo β := 
 { val := dlo_val,
-  aneg := adlo_aneg,
-  aneg_nqfree := adlo_aneg_nqfree,
-  aneg_prsv := adlo_aneg_prsv,
+  aneg := dlo_aneg,
+  aneg_nqfree := dlo_aneg_nqfree,
+  aneg_prsv := dlo_aneg_prsv,
   dep0 := dlo_dep0,
   dec_dep0 := adlo_dec_dep0,
   decr := dlo_decr,
@@ -115,12 +117,12 @@ theorem dlo_atom [dlo β] : atom adlo β :=
       intros a Ha b bs, 
       cases a with m n m n, 
       unfold dlo_decr, 
-      repeat {unfold dlo_val}, 
+      repeat {unfold dlo_val}, unfold tval,
       repeat {rewrite nth_dft_pred}, 
       apply (pos_of_not_dep0_lt m n Ha)^.elim_right,
       apply (pos_of_not_dep0_lt m n Ha)^.elim_left,
       unfold dlo_decr, 
-      repeat {unfold dlo_val}, 
+      repeat {unfold dlo_val}, unfold tval,
       repeat {rewrite nth_dft_pred}, 
       repeat {rewrite nth_dft_pred}, 
       apply (pos_of_not_dep0_eq m n Ha)^.elim_right,
@@ -129,11 +131,24 @@ theorem dlo_atom [dlo β] : atom adlo β :=
   inh := dlo.inh β,
   dec_eq := by tactic.mk_dec_eq_instance } 
 
+def dlt [dlo β] (m n) (bs : list β) := I (A' (m <' n)) bs
+def deq [dlo β] (m n) (bs : list β) := I (A' (m =' n)) bs
+def dle [dlo β] (m n) (bs : list β) := dlt m n bs ∨ deq m n bs
+
+lemma le_of_dle [dlo β] {m n} {bs : list β} : dle m n bs → tval m bs ≤ tval n bs := sorry
+
+lemma exp_val_lt [H : dlo β] {m n} {bs} : 
+@atom.val adlo β dlo_atom (adlo.lt m n) bs 
+  ↔ ((list.nth_dft (@dlo.inh _ H) bs m) < (list.nth_dft (@dlo.inh _ H) bs n)) := 
+begin apply iff.refl end
+
+def exp_decr_lt [dlo β] (m n) : @atom.decr adlo β dlo_atom (m <' n) = (m-1 <' n-1) := rfl
+
 def dlo_solv0 : adlo → Prop  
 | (adlo.lt m n) := false
 | (adlo.eq m n) := m = 0 ∨ n = 0 
 
-lemma dlo_dec_solv0 : decidable_pred dlo_solv0 
+def dlo_dec_solv0 : decidable_pred dlo_solv0 
 | (adlo.lt m n) := is_false (λ H, by cases H)
 | (adlo.eq m n) := 
   begin
@@ -176,7 +191,7 @@ def dlo_triv : adlo → Prop
 | (adlo.lt m n) := false
 | (adlo.eq m n) := m = n
 
-lemma dlo_dec_triv : decidable_pred dlo_triv
+def dlo_dec_triv : decidable_pred dlo_triv
 | (adlo.lt m n) := begin apply is_false, apply id end
 | (adlo.eq m n) := 
   begin
@@ -239,25 +254,25 @@ lemma dlo_subst_prsv [dlo β] : ∀ {e : adlo} (He : dlo_solv0 e) {a : adlo} {bs
 | (adlo.eq 0 n) _ (x <' y) := 
   begin
     intro bs, unfold dlo_subst0,
-    repeat {unfold dlo_val},  
+    repeat {unfold dlo_val}, unfold tval,
     repeat {rewrite dlo_subst_prsv_aux_0n}
   end
 | (adlo.eq 0 n) _ (x =' y) :=
   begin
     intro bs, unfold dlo_subst0,
-    repeat {unfold dlo_val},  
+    repeat {unfold dlo_val}, unfold tval,
     repeat {rewrite dlo_subst_prsv_aux_0n}
   end
 | (adlo.eq m 0) _ (x <' y) := 
   begin
     intro bs, unfold dlo_subst0,
-    repeat {unfold dlo_val},  
+    repeat {unfold dlo_val}, unfold tval,
     repeat {rewrite dlo_subst_prsv_aux_m0}
   end
 | (adlo.eq m 0) _ (x =' y) := 
   begin
     intro bs, unfold dlo_subst0,
-    repeat {unfold dlo_val},  
+    repeat {unfold dlo_val}, unfold tval,
     repeat {rewrite dlo_subst_prsv_aux_m0}
   end
 | (adlo.eq (m+1) (n+1)) H _ := by cases H with H H ; cases H
@@ -275,33 +290,8 @@ end
 
 instance : decidable_eq adlo := by tactic.mk_dec_eq_instance
 
-lemma dlo_atomeq [H : dlo β] : atomeq adlo β := 
-{ val := dlo_val,
-  aneg := adlo_aneg,
-  aneg_nqfree := adlo_aneg_nqfree,
-  aneg_prsv := adlo_aneg_prsv,
-  dep0 := dlo_dep0,
-  dec_dep0 := adlo_dec_dep0,
-  decr := dlo_decr,
-  decr_prsv := 
-    begin
-      intros a Ha b bs, 
-      cases a with m n m n, 
-      unfold dlo_decr, 
-      repeat {unfold dlo_val}, 
-      repeat {rewrite nth_dft_pred}, 
-      apply (pos_of_not_dep0_lt m n Ha)^.elim_right,
-      apply (pos_of_not_dep0_lt m n Ha)^.elim_left,
-      unfold dlo_decr, 
-      repeat {unfold dlo_val}, 
-      repeat {rewrite nth_dft_pred}, 
-      repeat {rewrite nth_dft_pred}, 
-      apply (pos_of_not_dep0_eq m n Ha)^.elim_right,
-      apply (pos_of_not_dep0_eq m n Ha)^.elim_left,
-    end,
-  inh := dlo.inh β,
-  dec_eq := by tactic.mk_dec_eq_instance, 
-  solv0 := dlo_solv0,
+instance dlo_atomeq [H : dlo β] : atomeq adlo β := 
+{ dlo_atom with   solv0 := dlo_solv0,
   dec_solv0 := dlo_dec_solv0,
   dest_solv0 := dlo_dest_solv0,
   solv0_eq := @dlo_solv0_eq β _, 
@@ -313,20 +303,10 @@ lemma dlo_atomeq [H : dlo β] : atomeq adlo β :=
   subst_prsv := @dlo_subst_prsv β _,
   dest_pos := @dlo_dest_pos }
 
-def lt_has_0 : adlo → Prop 
-| (adlo.eq _ _) := false
-| (adlo.lt _ 0) := true
-| (adlo.lt 0 _) := true
-| (adlo.lt _ _) := false
+def is_b_atm (a : adlo) := 
+  ∃ n, (a = (n+1 <' 0)) ∨ (a = (0 <' n+1))
 
-def lt_single_0 : adlo → Prop 
-| (adlo.eq _ _) := false
-| (adlo.lt 0 0) := false
-| (adlo.lt _ 0) := true
-| (adlo.lt 0 _) := true
-| (adlo.lt (i+1) (j+1)) := false
-
-instance : decidable_pred lt_has_0 := sorry
+instance : decidable_pred is_b_atm := sorry
 
 lemma dlo_dec_mem : ∀ (a : adlo) (as : list adlo), decidable (a ∈ as) := 
 list.decidable_mem 
@@ -339,72 +319,25 @@ def get_ub : adlo → option nat
 | (0 <' n+1) := some n
 | _ := none
 
+def is_lb (m) (as : list adlo) := (m+1 <' 0) ∈ as
+
+def is_ub (n) (as : list adlo) := (0 <' n+1) ∈ as
+
 def dlo_qe_lbs  (as : list adlo) : list nat := 
 list.omap get_lb as
+
+lemma is_lb_of_mem_lbs {m} {as} : m ∈ dlo_qe_lbs as → is_lb m as := sorry
+
+lemma lbs_eq_nil_of_none_is_lb {as} : ¬ (∃ m, is_lb m as) → dlo_qe_lbs as = [] := sorry
 
 def dlo_qe_ubs  (as : list adlo) : list nat := 
 list.omap get_ub as
 
-def dlo_qe_split : ∀ (l : list adlo) (H : allp lt_single_0 l), (list nat × list nat)
-| [] := λ _, ([],[]) 
-| (a::as) :=
-  match a with 
-  | (adlo.eq m n) := begin intro H, exfalso, apply H _ (or.inl (eq.refl _)) end
-  | (adlo.lt 0 0) := begin intro H, exfalso, apply H _ (or.inl (eq.refl _)) end
-  | (adlo.lt (i+1) 0) := 
-    λ H, let (lbs,rbs) := dlo_qe_split as 
-      (begin intros a' Ha', apply H a' (or.inr Ha') end) in 
-      (i::lbs,rbs)
-  | (adlo.lt 0 (j+1)) := 
-    λ H, let (lbs,rbs) := dlo_qe_split as 
-      (begin intros a' Ha', apply H a' (or.inr Ha') end) in 
-      (lbs,j::rbs)
-  | (adlo.lt (i+1) (j+1)) := begin intro H, exfalso, apply H _ (or.inl (eq.refl _)) end
-  end
+lemma is_ub_of_mem_ubs {n} {as} : n ∈ dlo_qe_ubs as → is_ub n as := sorry
 
-lemma allp_single_0_of : ∀ (as : list adlo) (H : allp lt_has_0 as) (HZ : (0 <' 0) ∉ as), allp lt_single_0 as
-| [] _ _ := begin intros _ Ha, cases Ha end 
-| ((adlo.eq _ _)::as) H HZ := 
-  begin exfalso, apply (H _ (or.inl (by refl))) end
-| ((adlo.lt 0 0)::as) H HZ := 
-  begin exfalso, apply HZ, apply or.inl, refl end
-| ((adlo.lt (i+1) 0)::as) H HZ := 
-  begin 
-    intros a Ha, 
-    unfold has_mem.mem at Ha, 
-    unfold list.mem at Ha, 
-    cases Ha with Ha Ha, 
-    rewrite Ha, trivial,
-    apply allp_single_0_of, 
-    apply allp_tail_of_allp H,
-    apply not_mem_tail_of_not_mem HZ, 
-    apply Ha
-  end
-| ((adlo.lt 0 (j+1))::as) H HZ := 
-  begin
-    intros a Ha, 
-    unfold has_mem.mem at Ha, 
-    unfold list.mem at Ha, 
-    cases Ha with Ha Ha, 
-    rewrite Ha, trivial,
-    apply allp_single_0_of, 
-    apply allp_tail_of_allp H,
-    apply not_mem_tail_of_not_mem HZ, 
-    apply Ha
-  end
-| ((adlo.lt (i+1) (j+1))::as) H HZ := 
-  begin exfalso, apply (H _ (or.inl (by refl))) end
+lemma ubs_eq_nil_of_none_is_ub {as} : ¬ (∃ n, is_ub n as) → dlo_qe_ubs as = [] := sorry
 
 #exit
-
-def qe_dlo
-if HZ : (adlo.lt 0 0) ∈ as
-then ⊥' 
-else if H : allp lt_has_0 as
-     then let (lbs,rbs) := dlo_qe_split as (allp_single_0_of as H HZ) in 
-          let prs := list.product lbs rbs in 
-          list_conj $ list.map (λ pr, A' (prod.fst pr <' prod.snd pr)) prs
-     else ⊥'
 
 def dlo_qelim [atom adlo β] : fm adlo → fm adlo :=   
 @lift_nnf_qe _ β _ dlo_qe 
