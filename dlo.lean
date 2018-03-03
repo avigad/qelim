@@ -17,7 +17,6 @@ inductive adlo : Type
 notation x `<'` y := adlo.lt x y 
 notation x `='` y := adlo.eq x y 
 
-
 def tval [H : dlo β] (n) (bs : list β) := list.nth_dft (@dlo.inh _ H) bs n
 
 def dlo_val [H : dlo β] : adlo → list β → Prop 
@@ -131,11 +130,34 @@ instance dlo_atom [dlo β] : atom adlo β :=
   inh := dlo.inh β,
   dec_eq := by tactic.mk_dec_eq_instance } 
 
+def dlt [dlo β] (m n) (bs : list β) := tval m bs < tval n bs 
+def deq [dlo β] (m n) (bs : list β) := tval m bs = tval n bs 
+def dle [dlo β] (m n) (bs : list β) := tval m bs ≤ tval n bs 
+/-
 def dlt [dlo β] (m n) (bs : list β) := I (A' (m <' n)) bs
 def deq [dlo β] (m n) (bs : list β) := I (A' (m =' n)) bs
 def dle [dlo β] (m n) (bs : list β) := dlt m n bs ∨ deq m n bs
 
-lemma le_of_dle [dlo β] {m n} {bs : list β} : dle m n bs → tval m bs ≤ tval n bs := sorry
+lemma le_of_dle [dlo β] {m n} {bs : list β} : dle m n bs → tval m bs ≤ tval n bs := 
+begin
+  unfold dle, unfold dlt, unfold deq, 
+  unfold I, unfold interp, intro h,
+  apply le_of_eq_or_lt, apply or.symm h
+end
+
+lemma dle_of_le [dlo β] {m n} {bs : list β} : tval m bs ≤ tval n bs → dle m n bs := 
+begin 
+  unfold dle, unfold dlt, unfold deq, 
+  unfold I, unfold interp, intro h,
+  apply lt_or_eq_of_le h
+end
+
+lemma exp_dle [dlo β] {m n} {bs : list β} : dle m n bs ↔ tval m bs ≤ tval n bs := 
+begin apply iff.intro, apply le_of_dle, apply dle_of_le end
+
+lemma dle_trans [dlo β] {k m n} {bs : list β} : dle k m bs → dle m n bs → dle k n bs := 
+begin repeat {rewrite exp_dle}, apply le_trans end
+-/
 
 lemma exp_val_lt [H : dlo β] {m n} {bs} : 
 @atom.val adlo β dlo_atom (adlo.lt m n) bs 
@@ -306,7 +328,28 @@ instance dlo_atomeq [H : dlo β] : atomeq adlo β :=
 def is_b_atm (a : adlo) := 
   ∃ n, (a = (n+1 <' 0)) ∨ (a = (0 <' n+1))
 
-instance : decidable_pred is_b_atm := sorry
+def is_lb_atm (a : adlo) := ∃ n, (a = (n+1 <' 0)) 
+
+instance : decidable_pred is_b_atm 
+| (m+1 <' 0) := decidable.is_true 
+  begin existsi m, apply or.inl rfl end
+| (0 <' n+1) := decidable.is_true 
+  begin existsi n, apply or.inr rfl end
+| (m =' n) := 
+  begin 
+    apply decidable.is_false, intro h, 
+    cases h with h h ; cases h with h h ; cases h
+  end
+| (0 <' 0) := 
+  begin 
+    apply decidable.is_false, intro h, 
+    cases h with h h ; cases h with h h ; cases h
+  end
+| (m+1 <' n+1) := 
+  begin 
+    apply decidable.is_false, intro h, 
+    cases h with h h ; cases h with h h ; cases h
+  end
 
 lemma dlo_dec_mem : ∀ (a : adlo) (as : list adlo), decidable (a ∈ as) := 
 list.decidable_mem 
@@ -326,26 +369,73 @@ def is_ub (n) (as : list adlo) := (0 <' n+1) ∈ as
 def dlo_qe_lbs  (as : list adlo) : list nat := 
 list.omap get_lb as
 
-lemma is_lb_of_mem_lbs {m} {as} : m ∈ dlo_qe_lbs as → is_lb m as := sorry
+lemma exp_plus_one {n : nat} : n + 1 = nat.succ n := rfl
 
-lemma lbs_eq_nil_of_none_is_lb {as} : ¬ (∃ m, is_lb m as) → dlo_qe_lbs as = [] := sorry
+lemma is_lb_of_mem_lbs {m} {as} : 
+  m ∈ dlo_qe_lbs as → is_lb m as := 
+begin
+  unfold dlo_qe_lbs, intro h,
+  rewrite exp_mem_omap at h, 
+  cases h with a h, cases h with h1 h2, 
+  cases a with x y, cases x with x ; cases y with y,
+  cases h2, cases h2, cases h2, apply h1, cases h2, 
+  cases h2
+end
+
+lemma mem_lbs_of_is_lb {m} {as} : 
+ is_lb m as → m ∈ dlo_qe_lbs as :=
+begin
+  intro h, unfold dlo_qe_lbs, rewrite exp_mem_omap,
+  existsi (m+1 <' 0), apply and.intro, apply h, refl
+end
+
+
+lemma lbs_eq_nil_of_none_is_lb {as} : 
+  ¬ (∃ m, is_lb m as) → dlo_qe_lbs as = [] := 
+begin
+  intro h, cases (dest_list $ dlo_qe_lbs as) with he he,
+  apply he, exfalso, apply h, cases he with m he,
+  cases he with ms hm, existsi m, 
+  apply is_lb_of_mem_lbs, rewrite hm, 
+  apply or.inl rfl
+end
 
 def dlo_qe_ubs  (as : list adlo) : list nat := 
 list.omap get_ub as
 
-lemma is_ub_of_mem_ubs {n} {as} : n ∈ dlo_qe_ubs as → is_ub n as := sorry
+lemma is_ub_of_mem_ubs {n} {as} : n ∈ dlo_qe_ubs as → is_ub n as := 
+begin
+  unfold dlo_qe_ubs, intro h,
+  rewrite exp_mem_omap at h, 
+  cases h with a h, cases h with h1 h2, 
+  cases a with x y, cases x with x ; cases y with y,
+  cases h2, cases h2, apply h1, repeat {cases h2}
+end
 
-lemma ubs_eq_nil_of_none_is_ub {as} : ¬ (∃ n, is_ub n as) → dlo_qe_ubs as = [] := sorry
+lemma mem_ubs_of_is_ub {n} {as} : 
+ is_ub n as → n ∈ dlo_qe_ubs as :=
+begin
+  intro h, unfold dlo_qe_ubs, rewrite exp_mem_omap,
+  existsi (0 <' n+1), apply and.intro, apply h, refl
+end
 
-#exit
+lemma ubs_eq_nil_of_none_is_ub {as} : 
+  ¬ (∃ n, is_ub n as) → dlo_qe_ubs as = [] :=
+begin
+  intro h, cases (dest_list $ dlo_qe_ubs as) with he he,
+  apply he, exfalso, apply h, cases he with m he,
+  cases he with ms hm, existsi m, 
+  apply is_ub_of_mem_ubs, rewrite hm, 
+  apply or.inl rfl
+end
 
-def dlo_qelim [atom adlo β] : fm adlo → fm adlo :=   
-@lift_nnf_qe _ β _ dlo_qe 
-
-lemma dlo_qe_qfree : ∀ (p : fm adlo), nqfree p → qfree (dlo_qe p) := sorry
-
-lemma dlo_qe_prsv [atom adlo β] : ∀ (p : fm adlo) (xs : list β), I (dlo_qe p) xs = ∃ x, I p (x::xs) := sorry
-
-theorem dlo_qelim_prsv [atom adlo β] : 
-  ∀ (p : fm adlo) (xs : list β), I (@dlo_qelim β _ p) xs = I p xs :=  
-lnq_prsv dlo_qe dlo_qe_qfree dlo_qe_prsv
+-- def dlo_qelim [atom adlo β] : fm adlo → fm adlo :=   
+-- @lift_nnf_qe _ β _ dlo_qe 
+-- 
+-- lemma dlo_qe_qfree : ∀ (p : fm adlo), nqfree p → qfree (dlo_qe p) := sorry
+-- 
+-- lemma dlo_qe_prsv [atom adlo β] : ∀ (p : fm adlo) (xs : list β), I (dlo_qe p) xs = ∃ x, I p (x::xs) := sorry
+-- 
+-- theorem dlo_qelim_prsv [atom adlo β] : 
+  -- ∀ (p : fm adlo) (xs : list β), I (@dlo_qelim β _ p) xs = I p xs :=  
+-- lnq_prsv dlo_qe dlo_qe_qfree dlo_qe_prsv

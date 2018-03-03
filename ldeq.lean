@@ -60,7 +60,7 @@ begin
   apply atomeq.true_subst, apply H2,
   apply true_triv, apply HT,
   intros HR p Hp, 
-  cases (exp_mem_map Hp) with a Ha,
+  cases (ex_arg_of_mem_map Hp) with a Ha,
   cases Ha with Ha Ha', rewrite Ha', 
   clear Hp, clear Ha', clear p, 
   apply (atomeq.subst_prsv H2)^.elim_right,
@@ -89,7 +89,7 @@ begin
   apply Hqe, intros x Hx, apply Hl,
   apply mem_of_mem_filter Hx, cases pr with eqn as',
   apply list_conj_qfree, intros a Ha, 
-  cases (exp_mem_map Ha) with a' Ha',
+  cases (ex_arg_of_mem_map Ha) with a' Ha',
   rewrite Ha'^.elim_right, simp 
 end
 
