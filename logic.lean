@@ -27,6 +27,20 @@ notation `∃'` p   := fm.ex p
 
 variables {α β : Type}
 
+meta def fm_to_format [has_to_format α] : fm α → format 
+| (fm.true α) := "⊤"
+| (fm.false α) := "⊥"
+| (fm.atom a) := to_fmt a
+| (fm.and p q) := "(" ++ (fm_to_format p) ++ " ∧ " ++ (fm_to_format q) ++ ")"
+| (fm.or p q) := "(" ++ (fm_to_format p) ++ " ∨ " ++ (fm_to_format q) ++ ")"
+| (fm.not p) := "¬(" ++ (fm_to_format p) ++ ")" 
+| (fm.ex p)  := "∃(" ++ (fm_to_format p) ++ ")"
+
+meta instance [has_to_format α] : has_to_format (fm α) := ⟨fm_to_format⟩
+
+meta instance [has_to_format α] : has_to_tactic_format (fm α) := 
+has_to_format_to_has_to_tactic_format _
+
 def top_or_not (p : fm α) : p = ⊤' ∨ p ≠ ⊤' :=
 by cases p; {{apply or.inl, refl} <|> {apply or.inr, intro HC, cases HC}}
 

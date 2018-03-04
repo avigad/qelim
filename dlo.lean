@@ -17,6 +17,12 @@ inductive adlo : Type
 notation x `<'` y := adlo.lt x y 
 notation x `='` y := adlo.eq x y 
 
+meta def adlo_to_format : adlo → format 
+| (x <' y) := "(" ++ to_fmt x ++ "<" ++ to_fmt y ++ ")"
+| (x =' y) := "(" ++ to_fmt x ++ "=" ++ to_fmt y ++ ")"
+
+meta instance : has_to_format adlo := ⟨adlo_to_format⟩
+
 def tval [H : dlo β] (n) (bs : list β) := list.nth_dft (@dlo.inh _ H) bs n
 
 def dlo_val [H : dlo β] : adlo → list β → Prop 
