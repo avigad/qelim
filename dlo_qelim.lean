@@ -6,9 +6,9 @@ def dlo_qe_aux (as : list adlo) := -- (HZ) (H) :=
 let prs := list.product (dlo_qe_lbs as) (dlo_qe_ubs as) in 
 list_conj $ @list.map adlo (fm adlo) (@fm.atom adlo) (list.map (λ pr, (prod.fst pr <' prod.snd pr)) prs)
 
-def dlo_qe (β : Type) [atomeq adlo β] (as : list adlo) : fm adlo := 
+def dlo_qe (β : Type) [atom_eq_type adlo β] (as : list adlo) : fm adlo := 
 @ite (adlo.lt 0 0 ∈ as) 
-  (@list.decidable_mem adlo (atom.dec_eq _ β) (0 <' 0) as) _
+  (@list.decidable_mem adlo (atom_type.dec_eq _ β) (0 <' 0) as) _
   ⊥'
   (@ite (allp is_b_atm as) 
     (dec_allp _) _ 
@@ -16,12 +16,12 @@ def dlo_qe (β : Type) [atomeq adlo β] (as : list adlo) : fm adlo :=
     (⊥')
   )
 
-def dlo_qelim (β : Type) [atomeq adlo β] : fm adlo → fm adlo :=  
+def dlo_qelim (β : Type) [atom_eq_type adlo β] : fm adlo → fm adlo :=  
 @lift_dnfeq_qe _ β _ (dlo_qe β)
 
 -- Q : Why doesn't `cases (dlo_dec_mem (0 <' 0) as)` simplify things here? 
-lemma dlo_qe_qfree [HA : atomeq adlo β] : 
-  ∀ (as : list adlo) (Has : allp (@atom.dep0 adlo β _) as), 
+lemma dlo_qe_qfree [HA : atom_eq_type adlo β] : 
+  ∀ (as : list adlo) (Has : allp (@atom_type.dep0 adlo β _) as), 
     qfree (dlo_qe β as) := 
 begin
   intros as Has, unfold dlo_qe, 
@@ -35,7 +35,7 @@ begin
   intro H, trivial
 end
 
-lemma btw_of_lt [dlo β] {m n} {bs : list β} (H : atom.val (m<' n) bs) :
+lemma btw_of_lt [dlo β] {m n} {bs : list β} (H : atom_type.val (m<' n) bs) :
   ∃ b, ((tval m bs < b) ∧ (b < tval n bs)) :=  
 begin
   cases (dlo.btw H) with b Hb, 
@@ -43,7 +43,7 @@ begin
 end
 
 lemma is_b_atm_of [dlo β] : 
-  ∀ (a), (λ a', atom.dep0 β a' ∧ ¬atomeq.solv0 β a' ∧ a' ≠ (0 <' 0)) a → is_b_atm a 
+  ∀ (a), (λ a', atom_type.dep0 β a' ∧ ¬atom_eq_type.solv0 β a' ∧ a' ≠ (0 <' 0)) a → is_b_atm a 
 | (0   =' n  ) h := 
   begin exfalso, apply h^.elim_right^.elim_left, apply or.inl rfl end
 | (m   =' 0  ) h := 
@@ -98,13 +98,13 @@ begin
 end
 
 lemma dlo_qe_is_dnf [HD : dlo β] : ∀ (as : list adlo), 
-  (∀ (a : adlo), a ∈ as → atom.dep0 β a ∧ ¬ atomeq.solv0 β a) 
+  (∀ (a : adlo), a ∈ as → atom_type.dep0 β a ∧ ¬ atom_eq_type.solv0 β a) 
   → is_dnf_qe β (dlo_qe β) as := 
 begin
   intros as Has,
   unfold is_dnf_qe, intro bs, 
   unfold dlo_qe, unfold dlo_qe_aux, simp, 
-  cases (@list.decidable_mem adlo (atom.dec_eq _ β) (0 <' 0) as) with Hc Hc,
+  cases (@list.decidable_mem adlo (atom_type.dec_eq _ β) (0 <' 0) as) with Hc Hc,
   rewrite (exp_ite_false), 
  
   have HW : allp is_b_atm as := 
@@ -162,7 +162,7 @@ begin
   apply lt_of_lt_of_le, 
   apply Hb2, apply (Hn2 k Ha), 
   cases H with b Hb, unfold I, unfold interp,
-  have HE := (atom.decr_prsv (m+1 <' n+1) _ b bs),
+  have HE := (atom_type.decr_prsv (m+1 <' n+1) _ b bs),
   rewrite (exp_decr_lt (m+1) (n+1)) at HE, simp at HE,
   rewrite HE, clear HE, 
   apply lt_trans, 

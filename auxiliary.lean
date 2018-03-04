@@ -1,5 +1,37 @@
 variables {α β γ : Type}
 
+lemma le_iff_add_le_add_right [ordered_cancel_comm_monoid α] (a b c : α) : 
+(a ≤ b) ↔ (a + c ≤ b + c) := 
+begin 
+  apply iff.intro;  
+  intros h, apply add_le_add_right h,
+  apply le_of_add_le_add_right h
+end
+
+def list.sum [has_zero α] [has_add α] : list α → α 
+| [] := @has_zero.zero α _
+| (a::as) := a + list.sum as
+
+def dot_prod [has_zero α] [has_add α] [has_mul α] (as1 as2 : list α) : α := 
+list.sum (list.map (λ xy, prod.fst xy * prod.snd xy) (list.zip as1 as2))
+
+meta def exp_neg_dot_prod_aux : tactic unit := 
+`[unfold dot_prod, simp, unfold list.zip, unfold list.zip_with, 
+  simp, unfold list.sum] 
+
+def exp_neg_dot_prod [ring α] : ∀ (as1 as2 : list α),  
+  dot_prod (list.map has_neg.neg as1) as2 = has_neg.neg (dot_prod as1 as2) 
+| [] []      := begin exp_neg_dot_prod_aux, rewrite neg_zero end 
+| (a::as) [] := begin exp_neg_dot_prod_aux, rewrite neg_zero end 
+| [] (a::as) := begin exp_neg_dot_prod_aux, rewrite neg_zero end 
+| (a1::as1) (a2::as2) := 
+  begin 
+    exp_neg_dot_prod_aux, 
+    have hrw := (exp_neg_dot_prod as1 as2),
+    unfold dot_prod at hrw, unfold list.zip at hrw, 
+    simp, rewrite hrw, 
+  end
+
 lemma iff_of_eq {p q} : p = q → (p ↔ q) :=
 begin intro h, rewrite h end
 
@@ -256,6 +288,10 @@ match list.nth l n with
 | none := a 
 | (some a') := a'
 end
+
+def list.head_dft (a' : α) : list α → α 
+| [] := a'
+| (a::as) := a 
 
 lemma nth_pred (a : α) (l : list α) (n : nat) (H : n > 0) : 
 list.nth (a::l) n = list.nth l (n - 1) := 

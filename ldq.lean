@@ -2,9 +2,9 @@ import .nnf .dnf
 
 variables {α β : Type}
 
-open atom
+open atom_type
 
-def qelim [atom α β] (qe : list α → fm α) (as : list α) : fm α :=
+def qelim [atom_type α β] (qe : list α → fm α) (as : list α) : fm α :=
   and_o 
     (qe (@list.filter _ (dep0 β) (dec_dep0 _ _) as)) 
     (list_conj (list.map (λ (a : α), A' (decr β a)) (@list.filter _ (λ a, ¬ (dep0 β a)) 
@@ -14,7 +14,7 @@ def qelim [atom α β] (qe : list α → fm α) (as : list α) : fm α :=
          apply decidable.is_false (not_not_intro H)
        end) as)))
       
-def lift_dnf_qe (β : Type) [atom α β] (qe : list α → fm α) : fm α → fm α 
+def lift_dnf_qe (β : Type) [atom_type α β] (qe : list α → fm α) : fm α → fm α 
 | (fm.true α) := ⊤'
 | (fm.false α) := ⊥'
 | (fm.atom a) := A' a
@@ -23,7 +23,7 @@ def lift_dnf_qe (β : Type) [atom α β] (qe : list α → fm α) : fm α → fm
 | (fm.not p) := ¬' (lift_dnf_qe p) 
 | (fm.ex p) := disj (dnf (@nnf _ β _ $ lift_dnf_qe p)) (@qelim _ β _ @qe)
 
-lemma atoms_conj_qfree [atom α β] : ∀ (as : list α), qfree (list_conj (list.map (λ (a : α), A' decr β a) as )) 
+lemma atoms_conj_qfree [atom_type α β] : ∀ (as : list α), qfree (list_conj (list.map (λ (a : α), A' decr β a) as )) 
 | [] := trivial
 | (a::as) := 
   begin 
@@ -34,7 +34,7 @@ lemma atoms_conj_qfree [atom α β] : ∀ (as : list α), qfree (list_conj (list
     apply atoms_conj_qfree
   end
 
-lemma ldq_qfree [atom α β] (qe : list α → fm α)  
+lemma ldq_qfree [atom_type α β] (qe : list α → fm α)  
   (H : ∀ (l : list α), allp (dep0 β) l → qfree (qe l)) :
   ∀ (p : fm α), qfree (lift_dnf_qe β qe p)  
 | (fm.true α) := trivial
@@ -57,7 +57,7 @@ lemma ldq_qfree [atom α β] (qe : list α → fm α)
     apply allp_filter, apply atoms_conj_qfree 
   end
 
-def is_dnf_qe (β : Type) [atom α β] (qe : list α → fm α) (as : list α) : Prop := 
+def is_dnf_qe (β : Type) [atom_type α β] (qe : list α → fm α) (as : list α) : Prop := 
   ∀ (xs : list β), ((I (qe as) xs) ↔ (∃ x, (∀ a, a ∈ as → I (A' a) (x::xs))))
 
 lemma foo (Q : list β → α → Prop) (a : α) : ∀ (bss : list (list β)), 
@@ -66,7 +66,7 @@ lemma foo (Q : list β → α → Prop) (a : α) : ∀ (bss : list (list β)),
 | (bs::bss) := by simp 
 
 
-lemma exp_I_list_conj [atom α β] (xs : list β) : ∀ (ps : list (fm α)),
+lemma exp_I_list_conj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
 I (list_conj ps) xs = all_true (list.map (λ p, I p xs) ps)  
 | [] := 
   begin
@@ -89,7 +89,7 @@ I (list_conj ps) xs = all_true (list.map (λ p, I p xs) ps)
     apply H, apply or.inr, apply Hq 
   end
 
-lemma exp_I_list_disj [atom α β] (xs : list β) : ∀ (ps : list (fm α)),
+lemma exp_I_list_disj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
 I (list_disj ps) xs ↔ disj_list (list.map (λ p, I p xs) ps)  
 | [] := iff.refl _ 
 | (p::ps) := 
@@ -109,7 +109,7 @@ begin
   cases H with x Hx, existsi x, apply (or.inr Hx)
 end
 
-lemma dist_ex_disj_list [atom α β] : ∀ (ps : list (β → Prop)),  
+lemma dist_ex_disj_list [atom_type α β] : ∀ (ps : list (β → Prop)),  
   (∃ (x : β), disj_list (list.map (λ (p : β → Prop), p x) ps)) 
   ↔ (disj_list (list.map Exists ps))  
 | [] :=
@@ -125,7 +125,7 @@ lemma dist_ex_disj_list [atom α β] : ∀ (ps : list (β → Prop)),
     rewrite dist_ex_disj_list
   end
   
-lemma ldq_prsv [HA : atom α β] (qe : list α → fm α)  
+lemma ldq_prsv [HA : atom_type α β] (qe : list α → fm α)  
   (H1 : ∀ (l : list α), allp (dep0 β) l → qfree (qe l))
   (H2 : ∀ (as : list α), allp (dep0 β) as → is_dnf_qe β qe as) : 
     ∀ (p : fm α) (xs : list β), I (lift_dnf_qe β qe p) xs ↔ I p xs 
@@ -201,7 +201,7 @@ lemma ldq_prsv [HA : atom α β] (qe : list α → fm α)
     intros a Ha, 
     cases (dec_dep0 _ β a) with HD HD,
     rewrite exp_I_list_conj at H4, simp at H4, 
-    rewrite (eq.symm (decr_prsv a _ b xs)),
+    rewrite (iff.symm (decr_prsv a _ b xs)),
     apply H4, apply mem_map_of_mem _ a, 
     apply mem_filter_of_pred_and_mem, 
     apply HD, apply Ha, apply HD, 
