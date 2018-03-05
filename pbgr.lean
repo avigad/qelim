@@ -68,6 +68,32 @@ def hd_coeff : atom → int
 
 def dep0 (a) := hd_coeff a ≠ 0
 
+meta def decr_prsv_aux : tactic unit := 
+`[unfold decr, unfold val, 
+  cases ks with k ks, 
+  simp, repeat {rewrite nil_dot_prod},
+
+  unfold dep0 at h, 
+  unfold hd_coeff at h, 
+  unfold list.head_dft at h, 
+  have h' := classical.by_contradiction h, 
+  clear h, subst h',
+  
+  cases bs with b' bs', 
+  simp, rewrite dot_prod_nil,
+  rewrite exp_dot_prod,
+  rewrite zero_mul, rewrite zero_add, 
+  rewrite dot_prod_nil, 
+
+  simp, rewrite exp_dot_prod,
+  rewrite zero_mul, rewrite zero_add]
+
+lemma decr_prsv : ∀ (a : atom), ¬dep0 a → ∀ (b : ℤ) (bs : list ℤ), 
+  val (decr a) bs ↔ val a (b :: bs) 
+| (le i ks)      h b bs := by decr_prsv_aux
+| (dvd d i ks)   h b bs := by decr_prsv_aux
+| (ndvd d i ks)  h b bs := by decr_prsv_aux
+
 instance : atom_type atom int := 
 { val := val,
   aneg := aneg,
@@ -78,7 +104,7 @@ instance : atom_type atom int :=
   dec_dep0 := 
     begin intro a, apply dec_not_pred_of_dec_pred end,
   decr := decr,
-  decr_prsv := sorry ,
+  decr_prsv := decr_prsv,
   inh := 0,
   dec_eq := dec_eq }
 

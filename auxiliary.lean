@@ -8,12 +8,38 @@ begin
   apply le_of_add_le_add_right h
 end
 
+
 def list.sum [has_zero α] [has_add α] : list α → α 
 | [] := @has_zero.zero α _
 | (a::as) := a + list.sum as
 
+lemma zip_nil (as : list α) : list.zip as ([] : list β) = [] :=
+begin
+  cases as with a as, 
+  unfold list.zip, unfold list.zip_with, 
+  unfold list.zip, unfold list.zip_with 
+end
+
 def dot_prod [has_zero α] [has_add α] [has_mul α] (as1 as2 : list α) : α := 
 list.sum (list.map (λ xy, prod.fst xy * prod.snd xy) (list.zip as1 as2))
+
+lemma nil_dot_prod [has_zero α] [has_add α] [has_mul α] (as : list α) : 
+dot_prod [] as = 0 := 
+begin
+  unfold dot_prod, unfold list.zip, 
+  unfold list.zip_with, simp, unfold list.sum
+end
+
+lemma dot_prod_nil [has_zero α] [has_add α] [has_mul α] (as : list α) : 
+dot_prod as [] = 0 := 
+begin
+  unfold dot_prod, rewrite zip_nil, 
+  simp, unfold list.sum
+end
+
+lemma exp_dot_prod [has_zero α] [has_add α] [has_mul α] (a1 a2 : α) (as1 as2 : list α) : 
+dot_prod (a1::as1) (a2::as2) = (a1 * a2) + dot_prod as1 as2 := sorry
+
 
 meta def exp_neg_dot_prod_aux : tactic unit := 
 `[unfold dot_prod, simp, unfold list.zip, unfold list.zip_with, 
