@@ -6,13 +6,13 @@ variables {α β : Type}
 Requires : qfree arg0
 Ensures : nqfree ret
 -/
-def nnf [@atom_type α β] : fm α → fm α 
+def nnf (β) [@atom_type α β] : fm α → fm α 
 | (fm.true α) := ⊤'  
 | (fm.false α) := ⊥' 
 | (fm.atom a) := A' a
 | (fm.not (fm.true α)) := ⊥' 
 | (fm.not (fm.false α)) := ⊤' 
-| (fm.not (fm.atom a)) := atom_type.aneg β a
+| (fm.not (fm.atom a)) := atom_type.neg β a
 | (fm.not (fm.not p)) := nnf p
 | (fm.not (fm.or p q)) := fm.and (nnf (¬' p)) (nnf (¬' q))
 | (fm.not (fm.and p q)) := fm.or (nnf (¬' p)) (nnf (¬' q))
@@ -41,7 +41,7 @@ nqfree (@nnf α β _ (¬' p)) = nqfree (@nnf α β _  p) :=
 λ p, fm.rec_on p 
   (λ _, eq.refl _) 
   (λ _, eq.refl _) 
-  (λ _ a, propext (iff.intro (λ _, trivial) (λ H, atom_type.aneg_nqfree _ _)))
+  (λ _ a, propext (iff.intro (λ _, trivial) (λ H, atom_type.neg_nqfree _ _)))
   (λ q r Hq Hr Hqr,  
     begin
        unfold nnf, unfold nqfree, 
@@ -78,7 +78,7 @@ lemma nnf_nqfree [atom_type α β] :
 (λ q, fm.rec_on q 
   (λ _ _, trivial) 
   (λ _ _, trivial) 
-  (λ _ _ _, by apply atom_type.aneg_nqfree) 
+  (λ _ _ _, by apply atom_type.neg_nqfree) 
   (λ r s Hr Hs H1 H2, 
     begin
       rewrite nnf_exp_not_and,
@@ -115,7 +115,7 @@ lemma nnf_prsv_core [atom_type α β] : ∀ (p : fm α), qfree p →
 | (fm.false α) Hp xs := by nnf_prsv_lit
 | (fm.atom a)  Hp xs := 
   by {apply and.intro, refl, 
-      unfold nnf, apply atom_type.aneg_prsv} 
+      unfold nnf, apply atom_type.neg_prsv} 
 | (fm.and p q) Hp xs := 
   and.intro
     (begin

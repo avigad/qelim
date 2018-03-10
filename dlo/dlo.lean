@@ -1,4 +1,4 @@
-import .ldeq
+import ..common.ldeq
 
 variables {α β : Type}
 
@@ -29,19 +29,19 @@ def dlo_val [H : dlo β] : adlo → list β → Prop
 | (adlo.lt m n) bs := tval m bs < tval n bs
 | (adlo.eq m n) bs := tval m bs = tval n bs
 
-def dlo_aneg : adlo → fm adlo
+def dlo_neg : adlo → fm adlo
 | (adlo.lt m n) := (A' (adlo.eq m n)) ∨' (A' (adlo.lt n m))
 | (adlo.eq m n) := (A' (adlo.lt m n)) ∨' (A' (adlo.lt n m))
 
-lemma dlo_aneg_nqfree : ∀ (d : adlo), nqfree (dlo_aneg d)  
+lemma dlo_neg_nqfree : ∀ (d : adlo), nqfree (dlo_neg d)  
 | (adlo.lt m n) := and.intro trivial trivial
 | (adlo.eq m n) := and.intro trivial trivial
 
-lemma dlo_aneg_prsv [dlo β] : ∀ (d : adlo) (l : list β), 
-  interp dlo_val l (dlo_aneg d) ↔ interp dlo_val l (¬' A' d) 
+lemma dlo_neg_prsv [dlo β] : ∀ (d : adlo) (l : list β), 
+  interp dlo_val l (dlo_neg d) ↔ interp dlo_val l (¬' A' d) 
 | (adlo.lt m n) l := 
   begin
-    unfold dlo_aneg, unfold interp, 
+    unfold dlo_neg, unfold interp, 
     unfold dlo_val, 
     apply iff.intro, 
     intro H, apply not_lt_of_ge,
@@ -53,7 +53,7 @@ lemma dlo_aneg_prsv [dlo β] : ∀ (d : adlo) (l : list β),
   end
 | (adlo.eq m n) l := 
   begin
-    unfold dlo_aneg, unfold interp, unfold dlo_val,
+    unfold dlo_neg, unfold interp, unfold dlo_val,
     apply iff.intro, intro H, cases H with H H, 
     apply ne_of_lt H, apply ne_of_gt H, 
     intro H, apply lt_or_gt_of_ne H  
@@ -127,15 +127,18 @@ end
 
 instance dlo_atom [dlo β] : atom_type adlo β := 
 { val := dlo_val,
-  aneg := dlo_aneg,
-  aneg_nqfree := dlo_aneg_nqfree,
-  aneg_prsv := dlo_aneg_prsv,
+  neg := dlo_neg,
+  neg_nqfree := dlo_neg_nqfree,
+  neg_prsv := dlo_neg_prsv,
   dep0 := dlo_dep0,
   dec_dep0 := adlo_dec_dep0,
   decr := dlo_decr,
   decr_prsv := dlo_decr_prsv,
   inh := dlo.inh β,
-  dec_eq := by tactic.mk_dec_eq_instance } 
+  dec_eq := by tactic.mk_dec_eq_instance,
+  normal := λ _, false, 
+  normal_neg_prsv := λ _ h, by cases h,  
+  normal_decr_prsv := λ _ h, by cases h, } 
 
 def dlt [dlo β] (m n) (bs : list β) := tval m bs < tval n bs 
 def deq [dlo β] (m n) (bs : list β) := tval m bs = tval n bs 

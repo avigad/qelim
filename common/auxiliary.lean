@@ -20,6 +20,10 @@ begin
   unfold list.zip, unfold list.zip_with 
 end
 
+lemma exp_zip (a) (as : list α) (b) (bs : list β) : 
+  list.zip (a::as) (b::bs) = (a,b)::(list.zip as bs) :=
+begin unfold list.zip, unfold list.zip_with end
+
 def dot_prod [has_zero α] [has_add α] [has_mul α] (as1 as2 : list α) : α := 
 list.sum (list.map (λ xy, prod.fst xy * prod.snd xy) (list.zip as1 as2))
 
@@ -38,8 +42,11 @@ begin
 end
 
 lemma exp_dot_prod [has_zero α] [has_add α] [has_mul α] (a1 a2 : α) (as1 as2 : list α) : 
-dot_prod (a1::as1) (a2::as2) = (a1 * a2) + dot_prod as1 as2 := sorry
-
+dot_prod (a1::as1) (a2::as2) = (a1 * a2) + dot_prod as1 as2 := 
+begin
+  unfold dot_prod, rewrite exp_zip,
+  simp, unfold list.sum
+end
 
 meta def exp_neg_dot_prod_aux : tactic unit := 
 `[unfold dot_prod, simp, unfold list.zip, unfold list.zip_with, 
@@ -81,8 +88,28 @@ def list.omap (f : α → option β) : list α → list β
   | (some b) := b::(list.omap as) 
   end
 
-lemma exp_mem {a' a : α} {as} : a' ∈ a::as ↔ (a' = a ∨ a' ∈ as) := 
+lemma exp_mem_cons {a' a : α} {as} : a' ∈ a::as ↔ (a' = a ∨ a' ∈ as) := 
 by {unfold has_mem.mem, unfold list.mem}
+
+lemma exp_mem_nil {a : α} : (a ∈ ([] : list α)) ↔ false := 
+begin
+  apply iff.intro; intro h, cases h, 
+  exfalso, apply h
+end
+
+lemma exp_mem_singleton {a' a : α} : a' ∈ [a] ↔ (a' = a) := 
+begin
+  rewrite exp_mem_cons, rewrite exp_mem_nil,  
+  rewrite or_false
+end
+
+lemma exp_forall_eq {P : α → Prop} {a' : α} : 
+  (∀ a, a = a' → P a) ↔ P a' := 
+begin
+  apply iff.intro; intro h, 
+  apply h _ rfl, intros a' ha',
+  subst ha', apply h 
+end
 
 lemma eq_nil_of_map_eq_nil {f : α → β} {as}  
   (h : list.map f as = []) : as = [] :=
@@ -111,12 +138,12 @@ lemma exists_maximum [linear_order β] :
     apply @classical.by_cases (b ≤ bm); intro hle,
 
     existsi bm, apply and.intro (or.inr hbm1), 
-    intros bl hbl, rewrite exp_mem at hbl, 
+    intros bl hbl, rewrite exp_mem_cons at hbl, 
     cases hbl with hbl hbl, subst hbl, apply hle, 
     apply hbm2 _ hbl,
 
     existsi b, apply and.intro (or.inl rfl),
-    intros bl hbl, rewrite exp_mem at hbl, 
+    intros bl hbl, rewrite exp_mem_cons at hbl, 
     cases hbl with hbl hbl, subst hbl, 
     apply le_trans, apply hbm2 _ hbl, 
     apply le_of_not_le hle, 
@@ -170,7 +197,7 @@ lemma exp_mem_omap {f : α → option β} {b : β} : ∀ {as : list α}, (b ∈ 
     cases ha' with ha1' ha2',
     existsi a', apply and.intro (or.inr ha1') ha2',
     cases ho with b' hb', rewrite hb' at h,
-    unfold list.omap at h, rewrite exp_mem at h,
+    unfold list.omap at h, rewrite exp_mem_cons at h,
     cases h with h h, existsi a,
     apply and.intro (or.inl rfl), rewrite h,
     apply eq.symm hb',
@@ -180,7 +207,7 @@ lemma exp_mem_omap {f : α → option β} {b : β} : ∀ {as : list α}, (b ∈ 
   end)
  (begin 
    intro h, cases h with a' ha', 
-   cases ha' with h1 h2, rewrite exp_mem at h1, 
+   cases ha' with h1 h2, rewrite exp_mem_cons at h1, 
    cases h1 with h1 h1, 
    unfold list.omap, subst h1, rewrite eq.symm h2, 
    apply or.inl rfl, apply mem_omap_of_mem_omap_tail,
@@ -205,9 +232,96 @@ def list.first (p : α → Prop) [decidable_pred p] : list α → option (α × 
   else do (a',as') ← list.first as, 
           some (a',a::as')
 
+lemma cases_ite {P} {Q : α → Prop} {HD : decidable P} {f g : α} 
+  (Hf : P → Q f) (Hg : ¬ P → Q g) : Q (@ite P HD α f g) := 
+begin
+  unfold ite, cases HD with h h, simp, apply Hg h,
+  simp, apply Hf h
+end
+
+def exp_mem_insert [hd : decidable_eq α] {a1 a2 : α} {as : list α} :
+  a1 ∈ (list.insert a2 as) ↔ (a1 = a2 ∨ a1 ∈ as) := 
+begin
+  unfold list.insert,  
+  apply @cases_ite _ (a2 ∈ as) 
+    (λ as', a1 ∈ as' ↔ a1 = a2 ∨ a1 ∈ as)
+    _ as _; intro h1; apply iff.intro; intro h2,
+  apply or.inr h2,
+  cases h2 with h2 h2, subst h2, apply h1, apply h2,
+  rewrite exp_mem_cons at h2, apply h2,    
+  rewrite exp_mem_cons, apply h2 
+end
+
+meta def unfold_list_union := 
+`[unfold has_union.union, unfold list.union, unfold list.foldr] 
+
+/-
+def mem_or_mem_of_mem_union [decidable_eq α] (a : α) : 
+  ∀ (as1 as2 : list α), a ∈ (as1 ∪ as2) → (a ∈ as1 ∨ a ∈ as2)  
+| [] as2 := 
+  begin
+    unfold_list_union, 
+    intro h, apply or.inr h
+  end
+| (a1::as1) as2 :=
+  begin
+    unfold_list_union, intro h,
+  end -/
+
+lemma exp_cons_union [decidable_eq α] (a : α) (as1 as2) : 
+  (a::as1) ∪ as2 = list.insert a (as1 ∪ as2) := rfl
+
+lemma mem_union_of_mem_left [decidable_eq α] {a : α} : 
+  ∀ {as1 as2 : list α}, (a ∈ as1) → a ∈ (as1 ∪ as2)  
+| [] as2 hm := by cases hm
+| (a1::as1) as2 hm := 
+  begin
+    rewrite exp_mem_cons at hm,
+    rewrite exp_cons_union, 
+    rewrite exp_mem_insert, 
+    cases hm with hm hm,
+    apply or.inl hm, 
+    apply or.inr (mem_union_of_mem_left hm) 
+  end
+
+lemma mem_union_of_mem_right [decidable_eq α] {a : α} : 
+  ∀ {as1 as2 : list α}, (a ∈ as2) → a ∈ (as1 ∪ as2)  
+| [] as2 hm := hm
+| (a1::as1) as2 hm := 
+  begin
+    rewrite exp_cons_union, rewrite exp_mem_insert, 
+    apply or.inr, apply mem_union_of_mem_right hm
+  end
+
+lemma mem_union_of_mem_either [decidable_eq α] {a : α}  
+  {as1 as2 : list α} (h : a ∈ as1 ∨ a ∈ as2) : a ∈ (as1 ∪ as2) := 
+begin
+  cases h with h h, 
+  apply mem_union_of_mem_left h, 
+  apply mem_union_of_mem_right h 
+end
+
+lemma mem_either_of_mem_union [decidable_eq α] {a : α} : 
+  ∀ {as1 as2 : list α} (hm : a ∈ (as1 ∪ as2)), a ∈ as1 ∨ a ∈ as2 
+| [] as2 hm := or.inr hm  
+| (a1::as1) as2 hm := 
+  begin
+    rewrite exp_cons_union at hm,
+    rewrite exp_mem_insert at hm, 
+    cases hm with hm hm, 
+    apply or.inl (or.inl hm),
+    cases (mem_either_of_mem_union hm) with hm' hm',
+    apply or.inl (or.inr hm'),
+    apply or.inr hm'
+  end
+
+lemma exp_mem_union[decidable_eq α] {a : α}  {as1 as2 : list α} :
+  (a ∈ as1 ∪ as2) ↔ (a ∈ as1 ∨ a ∈ as2) := 
+  iff.intro mem_either_of_mem_union mem_union_of_mem_either
+
 def list.eqmem (l1 l2 : list α) := ∀ (a : α), (a ∈ l1 ↔ a ∈ l2)
 
-lemma eqmem_refl {l : list α} : list.eqmem l l := λ a, iff.refl _
+def eqmem_refl {l : list α} : list.eqmem l l := λ a, iff.refl _
 
 lemma eqmem_trans {l1 l2 l3 : list α} : list.eqmem l1 l2 → list.eqmem l2 l3 → list.eqmem l1 l3 :=  
 begin
@@ -241,6 +355,16 @@ begin
   apply (H a')^.elim_right, apply HM,
 end
 
+lemma true_iff_true {p q} : p → q → (p ↔ q) := 
+by {intros hp hq, apply iff.intro ; intro _, apply hq, apply hp}
+
+lemma false_iff_false {p q} : ¬ p → ¬ q → (p ↔ q) := 
+begin
+  intros hnp hnq, apply iff.intro, 
+  intro hp, apply absurd hp hnp,
+  intro hq, apply absurd hq hnq
+end
+
 def allp (P : α → Prop) (l : list α) := ∀ a, a ∈ l → P a
 
 def anyp (P : α → Prop) (l : list α) := ∃ a, a ∈ l ∧ P a
@@ -248,16 +372,33 @@ def anyp (P : α → Prop) (l : list α) := ∃ a, a ∈ l ∧ P a
 lemma allp_nil {P : α → Prop} : allp P [] :=
 begin intros _ H, cases H end
 
+lemma exp_allp_nil {P : α → Prop} : allp P [] ↔ true :=
+true_iff_true allp_nil trivial
+
 lemma allp_of_allp {P Q : α → Prop} (H : ∀ a, P a → Q a) 
   (as) (HP : allp P as) : allp Q as :=
 begin intros a Ha, apply H, apply HP, apply Ha end
 
-lemma cases_ite {P} {Q : α → Prop} {HD : decidable P} {f g : α} 
-  (Hf : P → Q f) (Hg : ¬ P → Q g) : Q (@ite P HD α f g) := 
+lemma allp_union_of_allp_both [decidable_eq α] {P : α → Prop} {as1 as2}  
+  (h : allp P as1 ∧ allp P as2) : allp P (as1 ∪ as2) :=
 begin
-  unfold ite, cases HD with h h, simp, apply Hg h,
-  simp, apply Hf h
+  cases h with h1 h2, intros a ha, 
+  rewrite exp_mem_union at ha, 
+  cases ha with ha ha, 
+  apply h1 _ ha, apply h2 _ ha,
 end
+
+lemma allp_both_of_allp_union [decidable_eq α] {P : α → Prop} {as1 as2}  
+  (h : allp P (as1 ∪ as2)) : allp P as1 ∧ allp P as2 :=
+begin
+  apply and.intro; intros a ha; apply h,
+  apply mem_union_of_mem_left ha,
+  apply mem_union_of_mem_right ha
+end
+
+lemma exp_allp_union [decidable_eq α] (P : α → Prop) (as1 as2) :
+  (allp P (as1 ∪ as2)) ↔ (allp P as1 ∧ allp P as2) :=
+iff.intro allp_both_of_allp_union allp_union_of_allp_both
 
 lemma eq_true_or_eq_false_of_dec (P) [HP : decidable P] : P = true ∨ P = false :=
 begin
@@ -331,15 +472,6 @@ lemma nth_dft_succ {a a' : α} {l : list α} {n : nat} :
 list.nth_dft a (a'::l) (n+1) = list.nth_dft a l n :=
 begin unfold list.nth_dft, simp  end
 
-lemma true_iff_true {p q} : p → q → (p ↔ q) := 
-by {intros hp hq, apply iff.intro ; intro _, apply hq, apply hp}
-
-lemma false_iff_false {p q} : ¬ p → ¬ q → (p ↔ q) := 
-begin
-  intros hnp hnq, apply iff.intro, 
-  intro hp, apply absurd hp hnp,
-  intro hq, apply absurd hq hnq
-end
 
 lemma nth_dft_head {a a' : α} {as : list α} : list.nth_dft a' (a::as) 0 = a := 
 begin unfold list.nth_dft, simp end
@@ -357,6 +489,29 @@ def disj_list : list Prop → Prop
 | (p::ps) := p ∨ disj_list ps
 
 def some_true (ps : list Prop) : Prop := ∃ (p : Prop), p ∈ ps ∧ p
+
+lemma some_true_iff_disj_list : 
+  ∀ {ps : list Prop}, some_true ps ↔ disj_list ps 
+| [] :=
+  begin 
+    unfold some_true, unfold disj_list, 
+    apply iff.intro; intro h, cases h with x hx,
+    cases hx^.elim_left, exfalso, apply h
+  end
+| (p::ps) := 
+  begin
+    unfold some_true, unfold disj_list, 
+    apply iff.intro; intro h, cases h with x hx,
+    cases hx with hx1 hx2, rewrite exp_mem_cons at hx1,
+    cases hx1 with hx1 hx1, subst hx1, apply or.inl hx2, 
+    rewrite iff.symm some_true_iff_disj_list,
+    apply or.inr, existsi x, apply and.intro hx1 hx2,
+    cases h with h h, existsi p, 
+    apply and.intro (or.inl rfl) h, 
+    rewrite iff.symm some_true_iff_disj_list at h,
+    cases h with x hx, existsi x, cases hx with hx1 hx2,
+    apply and.intro (or.inr hx1) hx2 
+  end
 
 lemma disj_list_iff_some_true : ∀ (ps : list Prop), disj_list ps ↔ some_true ps 
 | [] := 
@@ -591,6 +746,10 @@ lemma allp_filter (P : α → Prop) [H : decidable_pred P] : ∀ (l : list α) ,
     simp, intros a Ha, cases Ha with H2 H3, rewrite H2,
     apply H1, apply allp_filter, apply H3
   end
+
+
+lemma eq_of_mem_singleton {a a' : α} : a ∈ [a'] → a = a' :=
+begin unfold has_mem.mem, unfold list.mem, rewrite or_false, apply id end
 
 lemma mem_of_mem_filter {P : α → Prop} {a : α} : 
   ∀ {l : list α} {HD : decidable_pred P}, a ∈ (@list.filter _ P HD l) → a ∈ l  

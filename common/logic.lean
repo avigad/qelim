@@ -25,6 +25,14 @@ notation `∃'` p   := fm.ex p
 -- | (fm.not p) :=
 -- | (fm.ex p) :=
 
+-- | ⊤' := sorry
+-- | ⊥' := sorry
+-- | (A' a) := sorry
+-- | (p ∧' q) := sorry
+-- | (p ∨' q) := sorry
+-- | (¬' p) := sorry
+-- | (∃' p) := sorry
+
 variables {α β : Type}
 
 meta def fm_to_format [has_to_format α] : fm α → format 
@@ -163,6 +171,14 @@ def not_o : fm α → fm α
 | ⊥' := ⊤'
 | p := ¬' p
 
+lemma cases_not_o_core (P : fm α → fm α → Prop) (p : fm α)  
+  (ht : P p ⊤' ) (hb : P p ⊥') (hnp : P p (¬' p)) : P p (not_o p) :=  
+begin cases p, apply hb, apply ht, repeat {apply hnp}, end
+
+lemma cases_not_o (P : fm α → Prop) (p : fm α)  
+  (ht : P ⊤' ) (hb : P ⊥') (hnp : P (¬' p)) : P (not_o p) :=  
+cases_not_o_core (λ _ q, P q) p ht hb hnp
+
 lemma exp_not_o_top : not_o ⊤' = (fm.false α) := eq.refl _
 
 lemma exp_not_o_bot : not_o ⊥' = (fm.true α) := eq.refl _
@@ -218,13 +234,13 @@ def list_disj : list (fm α) → fm α
 | [] := ⊥' 
 | (p::ps) := or_o p $ list_disj ps 
 
-def disj (ls : list (list α)) (f : list α → fm α) := list_disj $ list.map f ls
+def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj $ list.map f ls
 
-lemma disj_qfree (f : list α → fm α) (H : ∀ l, qfree (f l)) : ∀ (ls : list (list α)), qfree (disj ls f)  
+lemma disj_qfree (f : list α → fm α) (H : ∀ l, qfree (f l)) : ∀ (ls : list (list α)), qfree (dnf_to_fm ls f)  
 | [] := trivial 
 | (l::ls) := 
   begin 
-    unfold disj, unfold list.map, unfold list_disj,
+    unfold dnf_to_fm, unfold list.map, unfold list_disj,
     apply cases_or_o qfree _ _ trivial, 
     apply H, apply disj_qfree, 
     unfold qfree, apply and.intro, 
@@ -260,14 +276,14 @@ def atoms [decidable_eq α] : fm α → list α
 | ⊥' := [] 
 | A' a := [a]
 | (¬' p) := atoms p
-| (p ∨' q) := list.union (atoms p) (atoms q)
-| (p ∧' q) := list.union (atoms p) (atoms q)
+| (p ∨' q) := (atoms p) ∪ (atoms q)
+| (p ∧' q) := (atoms p) ∪ (atoms q)
 | (∃' p) := atoms p
 
-def interp (h : α → list β → Prop) : list β → fm α → Prop 
+def interp (h : list β → α → Prop) : list β → fm α → Prop 
 | xs ⊤' := true
 | xs ⊥' := false 
-| xs (A' a) := h a xs  
+| xs (A' a) := h xs a  
 | xs (¬' p) := ¬ (interp xs p)
 | xs (p ∨' q) := (interp xs p) ∨ (interp xs q)
 | xs (p ∧' q) := (interp xs p) ∧ (interp xs q)

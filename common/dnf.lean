@@ -13,18 +13,26 @@ def dnf : fm α → list (list α)
 | (fm.or p q) := dnf p ++ dnf q 
 | _ := []
 
+lemma dnf_prsv [atom_type α β] {p : fm α} {H : nqfree p} {bs : list β} : 
+  some_true (list.map (allp (atom_type.val bs)) (dnf p)) ↔ I p bs := sorry
+-- iff.trans (by rewrite some_true_iff_disj_list) (dnf_prsv _ H _)
+
+#exit
 lemma dnf_prsv [atom_type α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β), 
-  disj_list (list.map (λ (as : list α), ∀ a, a ∈ as → atom_type.val a xs) (dnf p)) ↔ I p xs 
+  disj_list (list.map (λ (as : list α), allp (atom_type.val xs) as) (dnf p)) ↔ I p xs 
 | (fm.true α) H bs := 
   by {unfold dnf, simp, unfold disj_list, 
-      rewrite exp_I_top, simp}
+      rewrite exp_allp_nil, rewrite true_or,
+      unfold I, unfold interp}
 | (fm.false α) H bs := 
   by {unfold dnf, simp, unfold disj_list, rewrite exp_I_bot }
 | (fm.atom a) H bs := 
   begin
     unfold dnf, simp, unfold disj_list, simp, 
-    apply iff.intro, intro Ha, apply Ha, refl,
-    intros Ha a' Ha', rewrite Ha', apply Ha
+    apply iff.intro, intro Ha, apply Ha, 
+    apply or.inl rfl, intros Ha a' Ha', 
+    rewrite exp_mem_singleton at Ha', subst Ha',
+    apply Ha
   end
 | (fm.and p q) H bs := 
   begin
@@ -41,7 +49,7 @@ lemma dnf_prsv [atom_type α β] : ∀ (p : fm α) (H : nqfree p) (xs : list β)
     cases (ex_arg_of_mem_map Hrl) with d Hd,
     simp at Hd, 
     apply and.intro, 
-
+         
     existsi (∀ (a : α), a ∈ (prod.fst d) → atom_type.val a bs),
     apply and.intro, apply mem_map_of_mem,
     apply fst_mem_of_mem_product Hd^.elim_right,

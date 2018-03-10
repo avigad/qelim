@@ -1,4 +1,4 @@
-import .atom .auxiliary
+import ..common.atom ..common.auxiliary
 
 namespace pbgr 
 
@@ -9,7 +9,7 @@ inductive atom : Type
 | dvd : int → int → list int → atom
 | ndvd : int → int → list int → atom
 
-def dec_eq : decidable_eq atom := 
+instance dec_eq : decidable_eq atom := 
 by tactic.mk_dec_eq_instance
 
 open atom 
@@ -21,15 +21,15 @@ def val : atom → list int → Prop
 | (dvd d i ks) xs := divides d (i + dot_prod ks xs)
 | (ndvd d i ks) xs := ¬ (divides d (i + dot_prod ks xs))
 
-def aneg : atom → fm atom
+def neg : atom → fm atom
 | (le i ks) := fm.atom (atom.le (1 - i) (list.map has_neg.neg ks))
 | (dvd d i ks)  := fm.atom (ndvd d i ks)
 | (ndvd d i ks) := fm.atom (dvd d i ks)
 
-def aneg_prsv : ∀ (a : atom) (xs : list ℤ), interp val xs (aneg a) ↔ interp val xs (¬' A' a) 
+def neg_prsv : ∀ (a : atom) (xs : list ℤ), interp val xs (neg a) ↔ interp val xs (¬' A' a) 
 | (le i ks)     xs := 
   begin 
-    unfold aneg, unfold interp, 
+    unfold neg, unfold interp, 
     unfold val, 
     apply 
     (calc 
@@ -94,18 +94,40 @@ lemma decr_prsv : ∀ (a : atom), ¬dep0 a → ∀ (b : ℤ) (bs : list ℤ),
 | (dvd d i ks)   h b bs := by decr_prsv_aux
 | (ndvd d i ks)  h b bs := by decr_prsv_aux
 
+def normal : atom → Prop 
+| (le i ks)     := true
+| (dvd d i ks)  := d ≠ 0
+| (ndvd d i ks) := d ≠ 0 
+
+meta def normal_neg_prsv_aux :=
+  `[unfold neg at hb, unfold atoms at hb, 
+    rewrite (eq_of_mem_singleton hb), trivial]
+
+lemma normal_neg_prsv : ∀ (a : atom), normal a → ∀ (b : atom), b ∈ @atoms _ _ (neg a) → normal b 
+| (le i ks)     h b hb := by normal_neg_prsv_aux
+| (dvd d i ks)  h b hb := by normal_neg_prsv_aux
+| (ndvd d i ks) h b hb := by normal_neg_prsv_aux
+
+lemma normal_decr_prsv : ∀ (a : atom), normal a → ¬dep0 a → normal (decr a) 
+| (le i ks)     hn hd := by unfold decr
+| (dvd d i ks)  hn hd := begin intro hc, apply hn hc end 
+| (ndvd d i ks) hn hd := begin intro hc, apply hn hc end 
+
 instance : atom_type atom int := 
 { val := val,
-  aneg := aneg,
-  aneg_nqfree := 
+  neg := neg,
+  neg_nqfree := 
     begin intro a, cases a; trivial, end,
-  aneg_prsv := aneg_prsv,
+  neg_prsv := neg_prsv,
   dep0 := dep0,
   dec_dep0 := 
     begin intro a, apply dec_not_pred_of_dec_pred end,
   decr := decr,
   decr_prsv := decr_prsv,
   inh := 0,
-  dec_eq := dec_eq }
+  dec_eq := _,
+  normal := normal, 
+  normal_neg_prsv := normal_neg_prsv,
+  normal_decr_prsv := normal_decr_prsv }
 
 end pbgr
