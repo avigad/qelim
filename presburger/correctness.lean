@@ -104,7 +104,7 @@ theorem ldq_prsv
   (qe : list pbgr.atom → fm pbgr.atom) 
   (hqf : ∀ as, allp dep0 as → qfree (qe as)) 
   (hn : ∀ as, allp dep0 as → allp normal as → fnormal int (qe as)) 
-  (he : ∀ as, allp dep0 as → allp normal as → is_dnf_qe int qe as) :
+  (he : ∀ as, allp dep0 as → allp normal as → qe_prsv int qe as) :
   ∀ p, fnormal int p → ∀ (bs : list int), I (lift_dnf_qe int qe p) bs ↔ I p bs :=
 
   

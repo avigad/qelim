@@ -234,7 +234,7 @@ def list_disj : list (fm α) → fm α
 | [] := ⊥' 
 | (p::ps) := or_o p $ list_disj ps 
 
-def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj $ list.map f ls
+def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj (list.map f ls)
 
 lemma disj_qfree (f : list α → fm α) (H : ∀ l, qfree (f l)) : ∀ (ls : list (list α)), qfree (dnf_to_fm ls f)  
 | [] := trivial 

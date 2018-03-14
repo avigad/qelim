@@ -8,12 +8,13 @@ class atom_type (α β : Type) :=
 (dep0 : α → Prop)
 (dec_dep0 : decidable_pred dep0)
 (decr : α → α)
-(decr_prsv : ∀ (a : α), ¬ (dep0 a) → ∀ (b : β) (bs : list β), (val bs (decr a) ↔ val (b::bs) a))
+(decr_prsv : ∀ {a : α} {hd : ¬ (dep0 a)} {b : β} {bs : list β}, (val bs (decr a) ↔ val (b::bs) a))
 (inh : β)
 (dec_eq : decidable_eq α)
 (normal : α → Prop)
-(normal_neg_prsv : ∀ a, normal a → allp normal (atoms (neg a)))
-(normal_decr_prsv : ∀ a, normal a → ¬ dep0 a → normal (decr a))
+(dec_normal : decidable_pred normal)
+(neg_prsv_normal : ∀ a, normal a → allp normal (atoms (neg a)))
+(decr_prsv_normal : ∀ a, normal a → ¬ dep0 a → normal (decr a))
 
 class atom_eq_type (α β : Type) extends atom_type α β :=
 (solv0 : α → Prop)

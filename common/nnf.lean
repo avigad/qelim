@@ -109,6 +109,36 @@ meta def nnf_prsv_lit : tactic unit :=
 `[apply and.intro, refl, unfold nnf, 
   unfold I, unfold interp, simp]
 
+meta def nnf_prsv_normal_core_tac := 
+  `[unfold nnf, unfold fnormal, 
+    unfold fnormal at hnm, cases hnm with hnmp hnmq, 
+    cases (@nnf_prsv_normal_core p hnmp) with ihp1 ihp2,  
+    cases (@nnf_prsv_normal_core q hnmq) with ihq1 ihq2,
+    apply and.intro;  apply and.intro; assumption]
+
+lemma nnf_prsv_normal_core [atom_type α β] : 
+  ∀ {p : fm α}, fnormal β p → fnormal β (nnf β p) ∧ fnormal β (nnf β ¬' p)
+| (fm.true α) hnm := and.intro trivial trivial 
+| (fm.false α) hnm := and.intro trivial trivial 
+| (fm.atom a) hnm := 
+  begin
+    apply and.intro hnm, 
+    unfold nnf, rewrite fnormal_iff_fnormal_alt,
+    apply atom_type.neg_prsv_normal, apply hnm
+  end
+| (fm.not p) hnm := 
+  begin
+    cases (@nnf_prsv_normal_core p _) with ih1 ih2,  
+    unfold nnf,apply and.intro; assumption, apply hnm
+  end
+| (fm.or p q) hnm := by nnf_prsv_normal_core_tac
+| (fm.and p q) hnm := by nnf_prsv_normal_core_tac
+| (fm.ex p) hnm := 
+  begin unfold nnf, apply and.intro; trivial end
+
+lemma nnf_prsv_normal [atom_type α β] {p : fm α} (h : fnormal β p) : fnormal β (nnf β p) :=
+(nnf_prsv_normal_core h)^.elim_left
+
 lemma nnf_prsv_core [atom_type α β] : ∀ (p : fm α), qfree p → 
   (∀ (xs : list β), (I (@nnf α β _ p) xs ↔ I p xs) ∧ (I (@nnf α β _ ¬' p) xs ↔ I (¬' p) xs))   
 | (fm.true α)  Hp xs := by nnf_prsv_lit

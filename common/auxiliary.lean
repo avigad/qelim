@@ -372,6 +372,10 @@ def anyp (P : α → Prop) (l : list α) := ∃ a, a ∈ l ∧ P a
 lemma allp_nil {P : α → Prop} : allp P [] :=
 begin intros _ H, cases H end
 
+lemma allp_of_allp_cons {P : α → Prop} {a} {as} (h : allp P (a::as)) : 
+  allp P as :=
+begin intros a' ha', apply h, apply or.inr ha' end
+
 lemma exp_allp_nil {P : α → Prop} : allp P [] ↔ true :=
 true_iff_true allp_nil trivial
 
@@ -584,7 +588,8 @@ begin
   apply or.inr, apply Hl, apply Hr 
 end
 
-def ex_arg_of_mem_map {f : α → β} {b : β} : ∀ {as : list α} (H : b ∈ list.map f as), ∃ a, a ∈ as ∧ b = f a 
+def ex_arg_of_mem_map {f : α → β} {b : β} : 
+  ∀ {as : list α}, (b ∈ list.map f as) → ∃ a, a ∈ as ∧ b = f a 
 | [] H := by cases H 
 | (a::as) H := 
   begin
@@ -620,14 +625,26 @@ lemma snd_mem_of_mem_product :
     rewrite Hx^.elim_right, apply Hx^.elim_left
   end
 
-def mem_map_of_mem {f : α → β} : ∀ (as : list α) (a : α), a ∈ as → (f a) ∈ list.map f as 
+def mem_map_of_mem {f : α → β} : ∀ {as : list α} {a : α}, a ∈ as → (f a) ∈ list.map f as 
 | [] a H := by cases H 
 | (a'::as) a H := 
   begin
     unfold list.map, cases H with H H,
     rewrite H, apply or.inl (eq.refl _),
-    apply or.inr, apply mem_map_of_mem as a H
+    apply or.inr, apply @mem_map_of_mem as a H
   end
+
+def mem_map_of_ex_arg {f : α → β} {b : β} : 
+  ∀ {as : list α}, (∃ a, a ∈ as ∧ b = f a) → b ∈ list.map f as := 
+begin
+  intros as hex, cases hex with a ha,
+  cases ha with ha1 ha2, subst ha2,
+  apply mem_map_of_mem ha1,
+end
+
+def exp_mem_map {f : α → β} {b : β} {as : list α} : 
+ (b ∈ list.map f as) ↔ (∃ a, a ∈ as ∧ b = f a) :=
+iff.intro (ex_arg_of_mem_map) (mem_map_of_ex_arg)
 
 lemma mem_product_of_mem_of_mem :
   ∀ {as : list α} {bs : list β} {a : α} {b : β}, 
@@ -643,7 +660,7 @@ lemma mem_product_of_mem_of_mem :
     cases Ha with Ha Ha, cases Hb with Hb Hb, 
     apply or.inl, simp *, 
     apply or.inr, apply mem_append_of_mem_or_mem,
-    apply or.inl, simp *, apply mem_map_of_mem bs b', 
+    apply or.inl, simp *, apply mem_map_of_mem, 
     apply Hb, apply or.inr, apply mem_append_of_mem_or_mem,
     apply or.inr, apply mem_product_of_mem_of_mem,
     apply Ha, apply Hb
@@ -737,16 +754,6 @@ meta def first_arg (f : α → tactic β) : list α → tactic β
 meta def papply_trans (pe : pexpr) := 
 do papply ``(eq.trans), papply pe
 
-lemma allp_filter (P : α → Prop) [H : decidable_pred P] : ∀ (l : list α) , allp P (list.filter P l) 
-| [] := begin intros _ Ha, cases Ha end 
-| (x::xs) := 
-  begin 
-    unfold list.filter, unfold ite, 
-    cases (H x) with H1 H1, simp, apply allp_filter, 
-    simp, intros a Ha, cases Ha with H2 H3, rewrite H2,
-    apply H1, apply allp_filter, apply H3
-  end
-
 
 lemma eq_of_mem_singleton {a a' : α} : a ∈ [a'] → a = a' :=
 begin unfold has_mem.mem, unfold list.mem, rewrite or_false, apply id end
@@ -763,6 +770,23 @@ lemma mem_of_mem_filter {P : α → Prop} {a : α} :
     apply or.inl H1, apply or.inr, 
     apply mem_of_mem_filter H2,
   end 
+
+lemma allp_filter_cond (P : α → Prop) [H : decidable_pred P] : ∀ (l : list α) , allp P (list.filter P l) 
+| [] := begin intros _ Ha, cases Ha end 
+| (x::xs) := 
+  begin 
+    unfold list.filter, unfold ite, 
+    cases (H x) with H1 H1, simp, apply allp_filter_cond, 
+    simp, intros a Ha, cases Ha with H2 H3, rewrite H2,
+    apply H1, apply allp_filter_cond, apply H3
+  end
+
+lemma allp_filter_of_allp {P Q : α → Prop} [H : decidable_pred Q] 
+  {as : list α} (h : allp P as) : allp P (list.filter Q as) := 
+begin
+  intros a ha, apply h, 
+  apply mem_of_mem_filter ha 
+end
 
 lemma pred_of_mem_filter_pred {P : α → Prop} {a : α} : 
   ∀ {l : list α} {HD : decidable_pred P}, a ∈ (@list.filter _ P HD l) → P a 

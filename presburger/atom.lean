@@ -16,10 +16,10 @@ open atom
 
 def divides (m n : int) : Prop := int.rem n m = 0
 
-def val : atom → list int → Prop 
-| (le i ks) xs := i ≤ dot_prod ks xs
-| (dvd d i ks) xs := divides d (i + dot_prod ks xs)
-| (ndvd d i ks) xs := ¬ (divides d (i + dot_prod ks xs))
+def val : list int → atom →  Prop 
+| xs (le i ks) := i ≤ dot_prod ks xs
+| xs (dvd d i ks) := divides d (i + dot_prod ks xs)
+| xs (ndvd d i ks) := ¬ (divides d (i + dot_prod ks xs))
 
 def neg : atom → fm atom
 | (le i ks) := fm.atom (atom.le (1 - i) (list.map has_neg.neg ks))
@@ -89,7 +89,7 @@ meta def decr_prsv_aux : tactic unit :=
   rewrite zero_mul, rewrite zero_add]
 
 lemma decr_prsv : ∀ (a : atom), ¬dep0 a → ∀ (b : ℤ) (bs : list ℤ), 
-  val (decr a) bs ↔ val a (b :: bs) 
+  val bs (decr a) ↔ val (b :: bs) a
 | (le i ks)      h b bs := by decr_prsv_aux
 | (dvd d i ks)   h b bs := by decr_prsv_aux
 | (ndvd d i ks)  h b bs := by decr_prsv_aux
@@ -99,16 +99,16 @@ def normal : atom → Prop
 | (dvd d i ks)  := d ≠ 0
 | (ndvd d i ks) := d ≠ 0 
 
-meta def normal_neg_prsv_aux :=
+meta def neg_prsv_normal_aux :=
   `[unfold neg at hb, unfold atoms at hb, 
     rewrite (eq_of_mem_singleton hb), trivial]
 
-lemma normal_neg_prsv : ∀ (a : atom), normal a → ∀ (b : atom), b ∈ @atoms _ _ (neg a) → normal b 
-| (le i ks)     h b hb := by normal_neg_prsv_aux
-| (dvd d i ks)  h b hb := by normal_neg_prsv_aux
-| (ndvd d i ks) h b hb := by normal_neg_prsv_aux
+lemma neg_prsv_normal : ∀ (a : atom), normal a → ∀ (b : atom), b ∈ @atoms _ _ (neg a) → normal b 
+| (le i ks)     h b hb := by neg_prsv_normal_aux
+| (dvd d i ks)  h b hb := by neg_prsv_normal_aux
+| (ndvd d i ks) h b hb := by neg_prsv_normal_aux
 
-lemma normal_decr_prsv : ∀ (a : atom), normal a → ¬dep0 a → normal (decr a) 
+lemma decr_prsv_normal : ∀ (a : atom), normal a → ¬dep0 a → normal (decr a) 
 | (le i ks)     hn hd := by unfold decr
 | (dvd d i ks)  hn hd := begin intro hc, apply hn hc end 
 | (ndvd d i ks) hn hd := begin intro hc, apply hn hc end 
@@ -127,7 +127,7 @@ instance : atom_type atom int :=
   inh := 0,
   dec_eq := _,
   normal := normal, 
-  normal_neg_prsv := normal_neg_prsv,
-  normal_decr_prsv := normal_decr_prsv }
+  neg_prsv_normal := neg_prsv_normal,
+  decr_prsv_normal := decr_prsv_normal }
 
 end pbgr

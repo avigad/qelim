@@ -99,10 +99,10 @@ end
 
 lemma dlo_qe_is_dnf [HD : dlo β] : ∀ (as : list adlo), 
   (∀ (a : adlo), a ∈ as → atom_type.dep0 β a ∧ ¬ atom_eq_type.solv0 β a) 
-  → is_dnf_qe β (dlo_qe β) as := 
+  → qe_prsv β (dlo_qe β) as := 
 begin
   intros as Has,
-  unfold is_dnf_qe, intro bs, 
+  unfold qe_prsv, intro bs, 
   unfold dlo_qe, unfold dlo_qe_aux, simp, 
   cases (@list.decidable_mem adlo (atom_type.dec_eq _ β) (0 <' 0) as) with Hc Hc,
   rewrite (exp_ite_false), 
