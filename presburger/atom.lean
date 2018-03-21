@@ -1,4 +1,4 @@
-import ..common.atom ..common.auxiliary
+import ..common.atom ..common.list
 
 namespace pbgr 
 
@@ -81,11 +81,11 @@ meta def decr_prsv_aux : tactic unit :=
   
   cases bs with b' bs', 
   simp, rewrite dot_prod_nil,
-  rewrite exp_dot_prod,
+  rewrite exp_dot_prod_cons,
   rewrite zero_mul, rewrite zero_add, 
   rewrite dot_prod_nil, 
 
-  simp, rewrite exp_dot_prod,
+  simp, rewrite exp_dot_prod_cons,
   rewrite zero_mul, rewrite zero_add]
 
 lemma decr_prsv : ∀ (a : atom), ¬dep0 a → ∀ (b : ℤ) (bs : list ℤ), 
@@ -98,6 +98,11 @@ def normal : atom → Prop
 | (le i ks)     := true
 | (dvd d i ks)  := d ≠ 0
 | (ndvd d i ks) := d ≠ 0 
+
+def dec_normal : decidable_pred normal  
+| (le i ks)     := decidable.is_true trivial
+| (dvd d i ks)  := by apply dec_not_pred_of_dec_pred
+| (ndvd d i ks) := by apply dec_not_pred_of_dec_pred
 
 meta def neg_prsv_normal_aux :=
   `[unfold neg at hb, unfold atoms at hb, 
@@ -127,7 +132,55 @@ instance : atom_type atom int :=
   inh := 0,
   dec_eq := _,
   normal := normal, 
+  dec_normal := dec_normal,
   neg_prsv_normal := neg_prsv_normal,
   decr_prsv_normal := decr_prsv_normal }
+
+def asubst (i') (ks') : atom → atom 
+| (le i (k::ks))     := le (i - (k * i')) (comp_add (map_mul k ks') ks)
+| (dvd d i (k::ks))  := dvd d (i + (k * i')) (comp_add (map_mul k ks') ks)
+| (ndvd d i (k::ks)) := ndvd d (i + (k * i')) (comp_add (map_mul k ks') ks)
+| a := a
+
+meta def asubst_prsv_tac := 
+`[have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
+            = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
+  rewrite exp_dot_prod_cons,
+  rewrite mul_add, rewrite mul_comm, 
+  simp, apply add_left, 
+  rewrite exp_dot_prod_comp_add, 
+  rewrite exp_dot_prod_map_mul,
+  simp, rewrite he]
+
+lemma asubst_prsv (i' ks' xs) : 
+  ∀ a, val xs (asubst i' ks' a) ↔ val ((i' + dot_prod ks' xs)::xs) a 
+| (le i (k::ks))     := 
+  begin
+    unfold asubst, simp, unfold val, 
+    rewrite add_le_iff_le_sub, simp, 
+
+have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
+            = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
+  rewrite exp_dot_prod_cons,
+  rewrite mul_add, rewrite mul_comm, 
+  simp, apply add_left, 
+  rewrite exp_dot_prod_comp_add, 
+  rewrite exp_dot_prod_map_mul,
+  simp, rewrite he
+
+  end
+| (dvd d i (k::ks))  := 
+  begin
+    unfold asubst, simp, unfold val,
+    rewrite add_assoc, asubst_prsv_tac
+  end
+| (ndvd d i (k::ks)) := 
+  begin
+    unfold asubst, simp, unfold val,
+    rewrite add_assoc, asubst_prsv_tac
+  end
+| (le i [])     := iff.refl _
+| (dvd d i [])  := iff.refl _
+| (ndvd d i []) := iff.refl _
 
 end pbgr

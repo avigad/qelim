@@ -25,9 +25,9 @@ meta instance : has_to_format adlo := ⟨adlo_to_format⟩
 
 def tval [H : dlo β] (n) (bs : list β) := list.nth_dft (@dlo.inh _ H) bs n
 
-def dlo_val [H : dlo β] : adlo → list β → Prop 
-| (adlo.lt m n) bs := tval m bs < tval n bs
-| (adlo.eq m n) bs := tval m bs = tval n bs
+def dlo_val [H : dlo β] (bs : list β) : adlo → Prop 
+| (adlo.lt m n) := tval m bs < tval n bs
+| (adlo.eq m n) := tval m bs = tval n bs
 
 def dlo_neg : adlo → fm adlo
 | (adlo.lt m n) := (A' (adlo.eq m n)) ∨' (A' (adlo.lt n m))
@@ -108,7 +108,7 @@ begin
 end
 
 def dlo_decr_prsv [dlo β] :
-  ∀ (a : adlo), ¬dlo_dep0 a → ∀ (b : β) (bs : list β), dlo_val (dlo_decr a) bs ↔ dlo_val a (b :: bs) := 
+  ∀ (a : adlo), ¬dlo_dep0 a → ∀ (b : β) (bs : list β), dlo_val bs (dlo_decr a) ↔ dlo_val (b :: bs) a := 
 begin
   intros a Ha b bs, 
   cases a with m n m n, 
@@ -137,8 +137,9 @@ instance dlo_atom [dlo β] : atom_type adlo β :=
   inh := dlo.inh β,
   dec_eq := by tactic.mk_dec_eq_instance,
   normal := λ _, false, 
-  normal_neg_prsv := λ _ h, by cases h,  
-  normal_decr_prsv := λ _ h, by cases h, } 
+  dec_normal := _,
+  neg_prsv_normal := λ _ h, by cases h,  
+  decr_prsv_normal := λ _ h, by cases h, } 
 
 def dlt [dlo β] (m n) (bs : list β) := tval m bs < tval n bs 
 def deq [dlo β] (m n) (bs : list β) := tval m bs = tval n bs 
@@ -216,8 +217,8 @@ lemma dlo_true_triv [dlo β] : ∀ a, dlo_triv a → ∀ (bs : list β), dlo_val
   end
 
 def dlo_subst0 : adlo → adlo → adlo
-| (i =' j) (m <' n) := subst_idx i j m <' subst_idx i j n
-| (i =' j) (m =' n) := subst_idx i j m =' subst_idx i j n
+| (i =' j) (m <' n) := subst_eqn i j m <' subst_eqn i j n
+| (i =' j) (m =' n) := subst_eqn i j m =' subst_eqn i j n
 | _        a        := a
 
 lemma dlo_true_subst [dlo β] : ∀ e, dlo_solv0 e 
@@ -228,29 +229,29 @@ lemma dlo_true_subst [dlo β] : ∀ e, dlo_solv0 e
     intro bs, cases HT with HT HT, 
     subst HT, unfold dlo_subst0, 
     cases n with n, 
-    repeat {unfold subst_idx},
+    repeat {unfold subst_eqn},
     unfold dlo_val, 
-    repeat {unfold subst_idx},
+    repeat {unfold subst_eqn},
     unfold dlo_val, refl,
     rewrite HT, unfold dlo_subst0, 
     cases m with m, unfold dlo_val, 
-    repeat {unfold subst_idx}, 
+    repeat {unfold subst_eqn}, 
     unfold dlo_val, refl
   end
 
-lemma dlo_subst_prsv_aux_0n [dlo β] (n x) (bs) (H) : list.nth_dft (inh β) bs (subst_idx 0 n x) 
+lemma dlo_subst_prsv_aux_0n [dlo β] (n x) (bs) (H) : list.nth_dft (inh β) bs (subst_eqn 0 n x) 
   = list.nth_dft (inh β) (list.nth_dft (inh β) bs (dlo_dest_solv0 (0 =' n) H - 1) :: bs) x := 
 begin
-  cases x with x, unfold subst_idx,
+  cases x with x, unfold subst_eqn,
   rewrite exp_dlo_dest_solv0_0n, 
   rewrite nth_dft_head, refl
 end
 
-lemma dlo_subst_prsv_aux_m0 [dlo β] (m x) (bs) (H) : list.nth_dft (inh β) bs (subst_idx m 0 x) 
+lemma dlo_subst_prsv_aux_m0 [dlo β] (m x) (bs) (H) : list.nth_dft (inh β) bs (subst_eqn m 0 x) 
   = list.nth_dft (inh β) (list.nth_dft (inh β) bs (dlo_dest_solv0 (m =' 0) H - 1) :: bs) x := 
 begin
   cases m with m, apply dlo_subst_prsv_aux_0n,
-  cases x with x, unfold subst_idx,
+  cases x with x, unfold subst_eqn,
   rewrite exp_dlo_dest_solv0_m0, 
   rewrite nth_dft_head, refl, refl
 end

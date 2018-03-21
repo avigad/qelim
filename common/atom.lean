@@ -31,14 +31,21 @@ class atom_eq_type (α β : Type) extends atom_type α β :=
   val bs (subst0 e a) ↔ val ((list.nth_dft (atom_type.inh α β) bs (dest_solv0 e He - 1))::bs) a)
 (dest_pos : ∀ {a} {Ha : solv0 a}, ¬ trivial a → dest_solv0 a Ha > 0)
 
+-- subst_eqn i j k returns the result of taking an 
+-- identity atom of form (i = j) and using it to 
+-- substitute a de Brujin variable k.
 -- Requires : j = 0 ↔ ¬(i = 0)
-def subst_idx : nat → nat → nat → nat 
+def subst_eqn : nat → nat → nat → nat 
 | 0 j 0 := j - 1
 | (i+1) _ 0 := i  
 | _ _ k := k - 1 
 
+def isubst (k) : nat → nat 
+| 0 := k
+| (i + 1) := i
+
 -- Qstn : Why do I need this? (Why doesn't unfold work?)
-lemma exp_subst_idx_i0 (i) : subst_idx (i+1) 0 0 = i := 
+lemma exp_subst_eqn_i0 (i) : subst_eqn (i+1) 0 0 = i := 
 begin refl end
 
 variables {α β : Type}
@@ -133,3 +140,12 @@ lemma fnormal_iff_fnormal_alt [atom_type α β] :
 
 def disj_to_prop (β) [atom_type α β] (as : list α) (bs : list β) : Prop :=
   allp (atom_type.val bs) as
+
+instance atoms_dec_eq [atom_type α β] : decidable_eq α := 
+atom_type.dec_eq α β
+
+instance atoms_dec_dep0 [atom_type α β] : decidable_pred (atom_type.dep0 β) := 
+atom_type.dec_dep0 α β
+
+def atoms_dep0 (β) [atom_type α β] (p : fm α) := 
+list.filter (atom_type.dep0 β) (atoms p)

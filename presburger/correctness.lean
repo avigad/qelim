@@ -30,7 +30,7 @@ lemma nnf_closed_fnormal_core : ∀ {p : fm pbgr.atom},
   begin
     unfold nnf, apply and.intro, 
     apply hn, rewrite fnormal_iff_fnormal_alt,
-    apply atom_type.normal_neg_prsv, apply hn
+    apply atom_type.neg_prsv_normal, apply hn
   end
 | (p ∧' q) hn := by nnf_closed_fnormal_aux
 | (p ∨' q) hn := by nnf_closed_fnormal_aux
@@ -106,10 +106,7 @@ theorem ldq_prsv
   (hn : ∀ as, allp dep0 as → allp normal as → fnormal int (qe as)) 
   (he : ∀ as, allp dep0 as → allp normal as → qe_prsv int qe as) :
   ∀ p, fnormal int p → ∀ (bs : list int), I (lift_dnf_qe int qe p) bs ↔ I p bs :=
-
-  
-sorry 
-
+@ldq_prsv_gen pbgr.atom int pbgr.atom_type _ hqf hn he 
 
 end pbgr
 

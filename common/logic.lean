@@ -1,4 +1,4 @@
-import .auxiliary
+import .list
 
 inductive fm (α : Type) : Type 
 | true  : fm

@@ -126,15 +126,19 @@ meta def qelim_prsv_normal_tac :=
   apply pred_of_mem_filter_pred ha1]
 
 lemma qelim_prsv_normal [atom_type α β] {qe : list α → fm α}
-  {hqe : ∀ (as : list α), allp (normal β) as → fnormal β (qe as)}  
-  {as : list α} (hnm : allp (normal β) as) : fnormal β (qelim β qe as) := 
+  {hqe : ∀ (as : list α), allp (dep0 β) as → allp (normal β) as → fnormal β (qe as)}  
+  {as : list α} (hnm : allp (normal β) as) : 
+  fnormal β (qelim β qe as) := 
 begin
   unfold qelim, apply cases_and_o,
   trivial, apply hqe, 
+  apply allp_filter_cond,
   apply allp_filter_of_allp hnm,
   qelim_prsv_normal_tac,
   unfold fnormal, apply and.intro, 
-  apply hqe, apply allp_filter_of_allp hnm,
+  apply hqe, 
+  apply allp_filter_cond,
+  apply allp_filter_of_allp hnm,
   qelim_prsv_normal_tac
 end
 
@@ -167,7 +171,7 @@ meta def ldq_normal_tac :=
 
 
 lemma ldq_normal [atom_type α β] (qe : list α → fm α)  
-  (hqe : ∀ (as : list α), allp (normal β) as → fnormal β (qe as)) :
+  (hqe : ∀ (as : list α), allp (dep0 β) as → allp (normal β) as → fnormal β (qe as)) :
   ∀ p, fnormal β p → fnormal β (lift_dnf_qe β qe p) 
 | (fm.true α) hnm := trivial
 | (fm.false α) hnm := trivial
@@ -310,7 +314,7 @@ meta def ldq_prsv_core_aux :=
 lemma ldq_prsv_gen [atom_type α β] 
   (qe : list α → fm α)  
   (hqef : ∀ as, allp (dep0 β) as → qfree (qe as)) 
-  (hqen : ∀ as, allp (normal β) as → fnormal β (qe as))
+  (hqen : ∀ as, allp (dep0 β) as → allp (normal β) as → fnormal β (qe as))
   (hqep : ∀ as, allp (dep0 β) as → allp (normal β) as → qe_prsv β qe as) : 
   ∀ p, fnormal β p → ∀ (bs : list β), I (lift_dnf_qe β qe p) bs ↔ I p bs 
 | ⊤' _ bs := iff.refl _

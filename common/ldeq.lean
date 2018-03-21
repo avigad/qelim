@@ -17,18 +17,18 @@ def lift_eq_qe (β : Type) [atom_eq_type α β] (qe : list α → fm α) (as : l
     list_conj  (list.map (λ (a : α), A' (subst0 β eq a)) rest)
   end
 
-lemma leq_is_dnf_qe [atom_eq_type α β] (qe : list α → fm α) 
-  (H : ∀ (as : list α), (∀ (a : α), a ∈ as → atom_type.dep0 β a ∧ ¬ solv0 β a) → is_dnf_qe β qe as) : 
-  ∀ (as : list α), (∀ (a : α), a ∈ as → atom_type.dep0 β a) → is_dnf_qe β (lift_eq_qe β qe) as := 
+lemma leq_qe_prsv [atom_eq_type α β] (qe : list α → fm α) 
+  (H : ∀ (as : list α), (∀ (a : α), a ∈ as → atom_type.dep0 β a ∧ ¬ solv0 β a) → qe_prsv β qe as) : 
+  ∀ (as : list α), (∀ (a : α), a ∈ as → atom_type.dep0 β a) → qe_prsv β (lift_eq_qe β qe) as := 
 begin
-  intros as Has, unfold is_dnf_qe, intros bs, 
+  intros as Has, unfold qe_prsv, intros bs, 
   unfold lift_eq_qe, simp, 
   cases (@cases_first _ (solv0 β) (dec_solv0 _ β) 
     (@list.filter _ (λ (a : α), ¬trivial β a) 
       (begin apply dec_not_pred_of_dec_pred (trivial β),  
       apply atom_eq_type.dec_triv end) as)) with HC HC,
   rewrite HC^.elim_left, 
-  unfold lift_eq_qe, unfold is_dnf_qe at H,
+  unfold lift_eq_qe, unfold qe_prsv at H,
   apply iff.trans, apply H, intros a Ha, 
   apply and.intro, apply Has, apply mem_of_mem_filter Ha,
   apply HC^.elim_right, apply Ha, 
@@ -104,9 +104,9 @@ end
 
 lemma ldeq_prsv [atom_eq_type α β] (qe : list α → fm α) 
   (Hqe : ∀ (as) (Has : allp (@atom_type.dep0 α β _) as), qfree (qe as)) 
-  (Has : ∀ (as : list α), (∀ (a' : α), a' ∈ as → atom_type.dep0 β a' ∧ ¬ solv0 β a') → is_dnf_qe β qe as)  
+  (Has : ∀ (as : list α), (∀ (a' : α), a' ∈ as → atom_type.dep0 β a' ∧ ¬ solv0 β a') → qe_prsv β qe as)  
   (p : fm α) (bs : list β) : I (lift_dnfeq_qe β qe p) bs ↔ I p bs := 
 begin
   unfold lift_dnfeq_qe, apply ldq_prsv, apply leq_qfree,
-  apply Hqe, apply leq_is_dnf_qe, apply Has
+  apply Hqe, apply leq_qe_prsv, apply Has
 end

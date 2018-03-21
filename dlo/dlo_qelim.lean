@@ -35,12 +35,14 @@ begin
   intro H, trivial
 end
 
-lemma btw_of_lt [dlo β] {m n} {bs : list β} (H : atom_type.val (m<' n) bs) :
+lemma btw_of_lt [dlo β] {m n} {bs : list β} (H : atom_type.val bs (m <' n)) :
   ∃ b, ((tval m bs < b) ∧ (b < tval n bs)) :=  
 begin
   cases (dlo.btw H) with b Hb, 
   existsi b, apply Hb
 end
+
+#exit
 
 lemma is_b_atm_of [dlo β] : 
   ∀ (a), (λ a', atom_type.dep0 β a' ∧ ¬atom_eq_type.solv0 β a' ∧ a' ≠ (0 <' 0)) a → is_b_atm a 
