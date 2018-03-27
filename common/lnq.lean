@@ -45,9 +45,9 @@ lemma lnq_prsv_gen
   (hqe : qfree_prsv qe) 
   (r : fm α → Prop) 
   (hdc : down_closed r)
-  (hqc : closed qe r)
-  (hnc : closed (nnf β) r)
-  (hlc : ∀ f, closed f r → closed (lift_nnf_qe β f) r)
+  (hqc : preserves qe r)
+  (hnc : preserves (nnf β) r)
+  (hlc : ∀ f, preserves f r → preserves (lift_nnf_qe β f) r)
   (hi : ∀ (p : fm α), nqfree p → r p → ∀ (xs : list β), I (qe p) xs ↔ ∃ x, I p (x::xs)) : 
   ∀ (p : fm α), r p → ∀ (xs : list β), I (lift_nnf_qe β qe p) xs ↔ I p xs 
 | ⊤' _ bs := iff.refl _

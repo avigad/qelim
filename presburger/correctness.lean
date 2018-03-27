@@ -42,7 +42,7 @@ lemma nnf_closed_fnormal_core : ∀ {p : fm pbgr.atom},
 | (∃' p) hn := 
   begin unfold nnf, apply and.intro; trivial end
 
-lemma nnf_closed_fnormal : closed (@nnf pbgr.atom int _) (fnormal int) := 
+lemma nnf_closed_fnormal : preserves (@nnf pbgr.atom int _) (fnormal int) := 
 λ p hn, (nnf_closed_fnormal_core hn)^.elim_left
 
 lemma atoms_and_o_subset {p q : fm pbgr.atom} : 
@@ -58,7 +58,7 @@ begin
 end
 
 lemma lnq_closed_fnormal (f : fm atom → fm atom) 
- (hc : closed f (fnormal ℤ)) : closed (lift_nnf_qe ℤ f) (fnormal ℤ) 
+ (hc : preserves f (fnormal ℤ)) : preserves (lift_nnf_qe ℤ f) (fnormal ℤ) 
 | ⊤' hn := trivial
 | ⊥' hn := trivial
 | (A' a) hn := by {unfold lift_nnf_qe, apply hn}
@@ -92,7 +92,7 @@ lemma lnq_closed_fnormal (f : fm atom → fm atom)
 
 theorem lnq_prsv 
   (qe : fm pbgr.atom → fm pbgr.atom) 
-  (hqe : closed qe (fnormal int))
+  (hqe : preserves qe (fnormal int))
   (hqf : qfree_prsv qe) (hn : normal_prsv int qe) 
   (hi : ∀ p, nqfree p → fnormal int p → ∀ (bs : list int), I (qe p) bs ↔ ∃ b, (I p (b::bs))) : 
 ∀ p, fnormal int p → ∀ (bs : list int), I (lift_nnf_qe int qe p) bs ↔ I p bs :=

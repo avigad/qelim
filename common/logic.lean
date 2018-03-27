@@ -234,6 +234,8 @@ def list_disj : list (fm α) → fm α
 | [] := ⊥' 
 | (p::ps) := or_o p $ list_disj ps 
 
+def disj (bs : list β) (f : β → fm α) := list_disj (list.map f bs) 
+
 def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj (list.map f ls)
 
 lemma disj_qfree (f : list α → fm α) (H : ∀ l, qfree (f l)) : ∀ (ls : list (list α)), qfree (dnf_to_fm ls f)  
@@ -271,6 +273,7 @@ def amap (f : α → fm β) : fm α → fm β
 | (p ∧' q) := and_o (amap p) (amap q)
 | (∃' p) := ⊥' 
 
+
 def atoms [decidable_eq α] : fm α → list α 
 | ⊤' := [] 
 | ⊥' := [] 
@@ -279,6 +282,34 @@ def atoms [decidable_eq α] : fm α → list α
 | (p ∨' q) := (atoms p) ∪ (atoms q)
 | (p ∧' q) := (atoms p) ∪ (atoms q)
 | (∃' p) := atoms p
+
+meta def map_fm_prsv_tac :=
+`[unfold map_fm, unfold atoms, 
+  rewrite exp_allp_union, unfold atoms at h,
+  rewrite exp_allp_union at h, cases h with hp hq,
+  apply and.intro; apply map_fm_prsv; assumption]
+
+lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β → Prop} 
+  {f : α → β} (hf : ∀ a, P a → Q (f a)) :
+  ∀ {p} {hp : allp P (atoms p)}, allp Q (atoms (map_fm f p)) 
+| ⊤' h := begin apply allp_nil end
+| ⊥' h := begin apply allp_nil end
+| (A' a) h := 
+  begin 
+    unfold map_fm, unfold atoms, intros b hb, 
+    rewrite exp_mem_singleton at hb, subst hb,
+    apply hf, apply h, unfold atoms, apply or.inl rfl
+  end
+| (¬' p) h := 
+  begin
+    unfold map_fm, unfold atoms, unfold atoms at h,
+    apply map_fm_prsv, apply h
+  end
+| (p ∧' q) h := by map_fm_prsv_tac
+| (p ∨' q) h := by map_fm_prsv_tac
+| (∃' p) h := 
+  begin unfold map_fm, unfold atoms, apply allp_nil end
+
 
 def interp (h : list β → α → Prop) : list β → fm α → Prop 
 | xs ⊤' := true

@@ -25,5 +25,5 @@ inductive down : fm α → fm α → Prop
 def down_closed (r : fm α → Prop) : Prop := 
 ∀ (p q : fm α), down p q → r p → r q
 
-def closed (f : α → α) (r : α → Prop) : Prop := 
+def preserves (f : α → α) (r : α → Prop) : Prop := 
 ∀ a, r a → r (f a)

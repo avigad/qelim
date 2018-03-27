@@ -81,11 +81,11 @@ meta def decr_prsv_aux : tactic unit :=
   
   cases bs with b' bs', 
   simp, rewrite dot_prod_nil,
-  rewrite exp_dot_prod_cons,
+  rewrite cons_dot_prod_cons,
   rewrite zero_mul, rewrite zero_add, 
   rewrite dot_prod_nil, 
 
-  simp, rewrite exp_dot_prod_cons,
+  simp, rewrite cons_dot_prod_cons,
   rewrite zero_mul, rewrite zero_add]
 
 lemma decr_prsv : ∀ (a : atom), ¬dep0 a → ∀ (b : ℤ) (bs : list ℤ), 
@@ -98,6 +98,11 @@ def normal : atom → Prop
 | (le i ks)     := true
 | (dvd d i ks)  := d ≠ 0
 | (ndvd d i ks) := d ≠ 0 
+
+def divisor : atom → int 
+| (le i ks)     := 1
+| (dvd d i ks)  := d 
+| (ndvd d i ks) := d 
 
 def dec_normal : decidable_pred normal  
 | (le i ks)     := decidable.is_true trivial
@@ -145,12 +150,16 @@ def asubst (i') (ks') : atom → atom
 meta def asubst_prsv_tac := 
 `[have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
             = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
-  rewrite exp_dot_prod_cons,
+  rewrite cons_dot_prod_cons,
   rewrite mul_add, rewrite mul_comm, 
   simp, apply add_left, 
-  rewrite exp_dot_prod_comp_add, 
-  rewrite exp_dot_prod_map_mul,
+  rewrite comp_add_dot_prod, 
+  rewrite map_mul_dot_prod,
   simp, rewrite he]
+
+meta def asubst_prsv_aux := 
+`[unfold asubst, unfold val, 
+  repeat {rewrite nil_dot_prod}]
 
 lemma asubst_prsv (i' ks' xs) : 
   ∀ a, val xs (asubst i' ks' a) ↔ val ((i' + dot_prod ks' xs)::xs) a 
@@ -161,13 +170,12 @@ lemma asubst_prsv (i' ks' xs) :
 
 have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
             = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
-  rewrite exp_dot_prod_cons,
+  rewrite cons_dot_prod_cons,
   rewrite mul_add, rewrite mul_comm, 
   simp, apply add_left, 
-  rewrite exp_dot_prod_comp_add, 
-  rewrite exp_dot_prod_map_mul,
+  rewrite comp_add_dot_prod, 
+  rewrite map_mul_dot_prod,
   simp, rewrite he
-
   end
 | (dvd d i (k::ks))  := 
   begin
@@ -179,8 +187,8 @@ have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs)
     unfold asubst, simp, unfold val,
     rewrite add_assoc, asubst_prsv_tac
   end
-| (le i [])     := iff.refl _
-| (dvd d i [])  := iff.refl _
-| (ndvd d i []) := iff.refl _
+| (le i [])     := by asubst_prsv_aux
+| (dvd d i [])  := by asubst_prsv_aux
+| (ndvd d i []) := by asubst_prsv_aux
 
 end pbgr
