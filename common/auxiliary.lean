@@ -1,5 +1,7 @@
 variables {α β γ : Type}
 
+
+
 lemma add_le_iff_le_sub (a b c : int) : a + b ≤ c ↔ a ≤ c - b := 
 iff.intro (le_sub_right_of_add_le) (add_le_of_le_sub_right)
 
@@ -14,18 +16,19 @@ begin
   apply le_of_add_le_add_right h
 end
 
-lemma iff_of_eq {p q} : p = q → (p ↔ q) :=
-begin intro h, rewrite h end
-
-lemma exp_ite_true (p : Prop) [hd : decidable p] (h : p) (x y : α) : ite p x y = x := 
+lemma ite_true {p : Prop} [hd : decidable p] (h : p) (x y : α) : ite p x y = x := 
 begin
-  unfold ite, cases hd with hd hd, exfalso, 
-  apply hd h, simp, 
+  unfold ite, 
+  tactic.unfreeze_local_instances, 
+  cases hd with hd hd, simp, 
+  exfalso, apply hd h, simp
 end
 
-lemma exp_ite_false (p : Prop) [hd : decidable p] (h : ¬ p) (x y : α) : ite p x y = y := 
+lemma ite_false {p : Prop} [hd : decidable p] (h : ¬ p) (x y : α) : ite p x y = y := 
 begin
-  unfold ite, cases hd with hd hd, simp, 
+  unfold ite, 
+  tactic.unfreeze_local_instances, 
+  cases hd with hd hd, simp, 
   exfalso, apply h hd
 end
 
@@ -52,7 +55,9 @@ lemma dest_option : ∀ (o : option α), o = none ∨ ∃ a, o = some a
 lemma cases_ite {P} {Q : α → Prop} {HD : decidable P} {f g : α} 
   (Hf : P → Q f) (Hg : ¬ P → Q g) : Q (@ite P HD α f g) := 
 begin
-  unfold ite, cases HD with h h, simp, apply Hg h,
+  unfold ite, 
+  tactic.unfreeze_local_instances, 
+  cases HD with h h, simp, apply Hg h,
   simp, apply Hf h
 end
 
@@ -68,6 +73,7 @@ end
 
 lemma eq_true_or_eq_false_of_dec (P) [HP : decidable P] : P = true ∨ P = false :=
 begin
+  tactic.unfreeze_local_instances, 
   cases HP, 
   apply or.inr, rewrite eq_false, simp *,
   apply or.inl, rewrite eq_true, simp *,
@@ -133,10 +139,13 @@ def lcms : list nat → nat
 def zlcms (zs : list int) : int :=
 lcms (list.map int.nat_abs zs)
 
-
 open tactic
 
-meta def papply pe := to_expr pe >>= apply  
+meta def split_em (p : Prop) : tactic unit := 
+`[cases (classical.em p)]
+
+
+meta def papply (pe : pexpr) := to_expr pe >>= apply  
 
 meta def intro_fresh : tactic expr :=
 get_unused_name `h none >>= tactic.intro 
@@ -144,7 +153,7 @@ get_unused_name `h none >>= tactic.intro
 meta def intro_refl : tactic unit := 
 do t ← target, 
    match t with 
-   | `(_ = _) := papply ``(eq.refl _)
+   | `(_ = _) := papply ``(eq.refl _) >> skip
    | `(_ → _) := intro_fresh >> intro_refl
    | _ := failed 
    end

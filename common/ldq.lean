@@ -5,17 +5,17 @@ variables {α β : Type}
 open atom_type
 
 lemma exp_I_list_conj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
-I (list_conj ps) xs = all_true (list.map (λ p, I p xs) ps)  
+I (list_conj ps) xs = list.all_true (list.map (λ p, I p xs) ps)  
 | [] := 
   begin
     apply @eq.trans _ _ true, refl, 
     apply eq.symm, rewrite eq_true, 
-    apply all_true_nil
+    apply list.all_true_nil
   end
 | (p::ps) := 
   begin
     unfold list_conj, simp, 
-    rewrite exp_I_and_o, unfold all_true,
+    rewrite exp_I_and_o, unfold list.all_true,
     apply propext, apply iff.intro, 
     intros H p Hp, cases Hp with Hp Hp, 
     rewrite Hp, apply H^.elim_left, 
@@ -28,7 +28,7 @@ I (list_conj ps) xs = all_true (list.map (λ p, I p xs) ps)
   end
 
 def qe_prsv (β : Type) [atom_type α β] (qe : list α → fm α) (as : list α) : Prop := 
-  ∀ (bs : list β), ((I (qe as) bs) ↔ (∃ x, allp (val (x::bs)) as))
+  ∀ (bs : list β), ((I (qe as) bs) ↔ (∃ x, ∀ a ∈ as, (val (x::bs) a)))
 
 /- 
 Requires : qe takes a list of atoms that are all dependent on 0-variable,
@@ -48,9 +48,9 @@ def qelim (β) [atom_type α β] (qe : list α → fm α) (as : list α) : fm α
 variable (nm : α → Prop)
       
 lemma qelim_prsv [atom_type α β] {qe} 
-  (hqe : ∀ as, allp (dep0 β) as → allp (normal β) as → qe_prsv β qe as)
-  {as : list α} {hr : allp (normal β) as} (bs : list β) : 
-  (I (qelim β qe as) bs) ↔ (∃ b, allp (val (b::bs)) as) := 
+  (hqe : ∀ as, (∀ a ∈ as, (dep0 β a)) → (∀ a ∈ as, normal β a) → qe_prsv β qe as)
+  {as : list α} {hr : ∀ a ∈ as, normal β a} (bs : list β) : 
+  (I (qelim β qe as) bs) ↔ (∃ b, ∀ a ∈ as, val (b::bs) a) := 
 begin
   apply iff.intro; intro h,
 
@@ -62,10 +62,10 @@ begin
   rewrite exp_I_list_conj at h2, 
   rewrite map_compose at h2,
   rewrite iff.symm (decr_prsv α β),
-  apply h2, apply mem_map_of_mem,
-  apply mem_filter_of_pred_and_mem, 
+  apply h2, apply list.mem_map_of_mem,
+  apply mem_filter_of_mem, 
   apply hd, apply ha, apply hd, 
-  apply h1, apply mem_filter_of_pred_and_mem,
+  apply h1, apply mem_filter_of_mem,
   apply hd, apply ha, apply allp_filter_cond,
   apply allp_filter_of_allp, apply hr,
 
@@ -76,17 +76,17 @@ begin
   apply allp_filter_cond, 
   apply allp_filter_of_allp, apply hr, 
   rewrite exp_I_list_conj, intros p hp,
-  cases (ex_arg_of_mem_map hp) with q hq,
+  cases (list.exists_of_mem_map hp) with q hq,
   clear hp, simp at hq, cases hq with hq1 hq2, 
-  subst hq1, cases (ex_arg_of_mem_map hq2) with x hx,
+  subst hq1, cases (list.exists_of_mem_map hq2) with x hx,
   cases hx with hx1 hx2, simp at hx2, subst hx2, 
   unfold I, unfold interp, rewrite decr_prsv, 
   apply hb, apply mem_of_mem_filter, apply hx1, 
-  apply pred_of_mem_filter_pred hx1
+  apply of_mem_filterhx1
 end
 
 lemma fnormal_conj_of_allp_fnormal [atom_type α β] : 
-  ∀ (ps : list (fm α)), allp (fnormal β) ps → fnormal β (list_conj ps) 
+  ∀ (ps : list (fm α)), (∀ p ∈ ps, fnormal β p) → fnormal β (list_conj ps) 
 | [] hnm := by unfold list_conj 
 | (p::ps) hnm := 
   begin
@@ -94,15 +94,15 @@ lemma fnormal_conj_of_allp_fnormal [atom_type α β] :
     apply cases_and_o, trivial,
     apply hnm, apply or.inl rfl,
     apply fnormal_conj_of_allp_fnormal,
-    apply allp_of_allp_cons hnm, 
+    apply list.forall_mem_of_forall_mem_cons hnm, 
     unfold fnormal, apply and.intro, 
     apply hnm, apply or.inl rfl,
     apply fnormal_conj_of_allp_fnormal,
-    apply allp_of_allp_cons hnm 
+    apply list.forall_mem_of_forall_mem_cons  hnm 
   end 
 
 lemma fnormal_disj_of_allp_fnormal [atom_type α β] : 
-  ∀ (ps : list (fm α)), allp (fnormal β) ps → fnormal β (list_disj ps) 
+  ∀ (ps : list (fm α)), (∀ p ∈ ps, fnormal β p) → fnormal β (list_disj ps) 
 | [] hnm := by unfold list_disj 
 | (p::ps) hnm := 
   begin
@@ -110,39 +110,37 @@ lemma fnormal_disj_of_allp_fnormal [atom_type α β] :
     apply cases_or_o, trivial,
     apply hnm, apply or.inl rfl,
     apply fnormal_disj_of_allp_fnormal,
-    apply allp_of_allp_cons hnm, 
+    apply list.forall_mem_of_forall_mem_cons hnm, 
     unfold fnormal, apply and.intro, 
     apply hnm, apply or.inl rfl,
     apply fnormal_disj_of_allp_fnormal,
-    apply allp_of_allp_cons hnm 
+    apply list.forall_mem_of_forall_mem_cons hnm 
   end 
 
 meta def qelim_prsv_normal_tac :=
 `[apply fnormal_conj_of_allp_fnormal,
-  intros p hp, rewrite exp_mem_map at hp,
+  intros p hp, rewrite list.mem_map at hp,
   cases hp with a ha, cases ha with ha1 ha2,
   subst ha2, apply atom_type.decr_prsv_normal,
-  apply hnm, apply mem_of_mem_filter ha1,
-  apply pred_of_mem_filter_pred ha1]
+  apply hnm, apply list.mem_of_mem_filter ha1,
+  apply list.of_mem_filter ha1]
 
 lemma qelim_prsv_normal [atom_type α β] {qe : list α → fm α}
-  {hqe : ∀ (as : list α), allp (dep0 β) as → allp (normal β) as → fnormal β (qe as)}  
-  {as : list α} (hnm : allp (normal β) as) : 
+  {hqe : ∀ (as : list α), (∀ a ∈ as, dep0 β a) → (∀ a ∈ as, normal β a) → fnormal β (qe as)}  
+  {as : list α} (hnm : (∀ a ∈ as, normal β a)) : 
   fnormal β (qelim β qe as) := 
 begin
   unfold qelim, apply cases_and_o,
-  trivial, apply hqe, 
-  apply allp_filter_cond,
-  apply allp_filter_of_allp hnm,
+  trivial, apply hqe, intro a,
+  apply list.of_mem_filter,
+  apply list.forall_mem_filter_of_forall_mem hnm,
   qelim_prsv_normal_tac,
   unfold fnormal, apply and.intro, 
-  apply hqe, 
-  apply allp_filter_cond,
-  apply allp_filter_of_allp hnm,
+  apply hqe, intro as,
+  apply list.of_mem_filter,
+  apply list.forall_mem_filter_of_forall_mem hnm,
   qelim_prsv_normal_tac
 end
-
-
 
 def lift_dnf_qe (β : Type) [atom_type α β] (qe : list α → fm α) : fm α → fm α 
 | (fm.true α) := ⊤'
@@ -171,7 +169,7 @@ meta def ldq_normal_tac :=
 
 
 lemma ldq_normal [atom_type α β] (qe : list α → fm α)  
-  (hqe : ∀ (as : list α), allp (dep0 β) as → allp (normal β) as → fnormal β (qe as)) :
+  (hqe : ∀ (as : list α), (∀ a ∈ as, dep0 β a) → (∀ a ∈ as, normal β a) → fnormal β (qe as)) :
   ∀ p, fnormal β p → fnormal β (lift_dnf_qe β qe p) 
 | (fm.true α) hnm := trivial
 | (fm.false α) hnm := trivial
@@ -187,7 +185,7 @@ lemma ldq_normal [atom_type α β] (qe : list α → fm α)
   begin
     unfold lift_dnf_qe, unfold dnf_to_fm,
     apply fnormal_disj_of_allp_fnormal,
-    intros a ha, rewrite exp_mem_map at ha,
+    intros a ha, rewrite list.mem_map at ha,
     cases ha with as has, cases has with has1 has2,
     subst has2, apply qelim_prsv_normal, apply hqe,
     apply dnf_prsv_normal, apply nnf_prsv_normal, 
@@ -276,7 +274,7 @@ begin
   apply iff.intro; intro h,
 
   cases h with q hq, cases hq with hq1 hq2,
-  cases (ex_arg_of_mem_map hq1) with as has,
+  cases (list.exists_of_mem_map hq1) with as has,
   cases has with has1 has2, simp at has2,
   subst has2, 
   rewrite (@qelim_prsv α β) at hq2,
@@ -284,7 +282,7 @@ begin
   rewrite iff.symm dnf_prsv,
   existsi (allp (val (b :: bs)) as),
   apply and.intro, 
-  apply mem_map_of_mem, apply has1, 
+  apply list.mem_map_of_mem, apply has1, 
   apply hb, apply hpnq, apply hqep,
   apply dnf_prsv_normal,
   apply hpn,
@@ -292,10 +290,10 @@ begin
   apply has1, cases h with b hb, 
   rewrite iff.symm dnf_prsv at hb, 
   cases hb with q hq, cases hq with hq1 hq2,
-  cases (ex_arg_of_mem_map hq1) with as has,
+  cases (list.exists_of_mem_map hq1) with as has,
   cases has with has1 has2, subst has2, 
   existsi (I (qelim β qe as) bs), 
-  apply and.intro, apply mem_map_of_mem,
+  apply and.intro, apply list.mem_map_of_mem,
   apply has1, rewrite (@qelim_prsv _ β), 
   existsi b, apply hq2, apply hqep, 
   apply dnf_prsv_normal,
@@ -306,10 +304,10 @@ meta def ldq_prsv_core_aux :=
 `[repeat {rewrite ldq_prsv_gen}, 
   intros a ha, 
   apply hp, unfold atoms, 
-  apply mem_union_of_mem_right, apply ha, 
+  apply mem_union_right, apply ha, 
   intros a ha, 
   apply hp, unfold atoms, 
-  apply mem_union_of_mem_left, apply ha]
+  apply mem_union_left, apply ha]
 
 lemma ldq_prsv_gen [atom_type α β] 
   (qe : list α → fm α)  
@@ -429,13 +427,13 @@ lemma ldq_prsv [HA : atom_type α β] (qe : list α → fm α)
     intros a Ha, apply Hb,
     apply mem_of_mem_filter,
     apply Ha, rewrite exp_I_list_conj,
-    rewrite map_compose, unfold all_true, 
-    intros q Hq, cases (ex_arg_of_mem_map Hq) with a Ha,
+    rewrite map_compose, unfold list.all_true, 
+    intros q Hq, cases (list.exists_of_mem_map Hq) with a Ha,
     simp at Ha, rewrite Ha^.elim_left, 
     cases H3 with b Hb, unfold I, unfold interp,
     rewrite decr_prsv a _ b, apply Hb, 
     apply mem_of_mem_filter Ha^.elim_right,
-    apply pred_of_mem_filter_pred Ha^.elim_right,
+    apply of_mem_filterHa^.elim_right,
     intro H3, 
     have Hb := H3^.elim_left,
     have H4 := H3^.elim_right, clear H3, 
@@ -444,9 +442,9 @@ lemma ldq_prsv [HA : atom_type α β] (qe : list α → fm α)
     cases (dec_dep0 _ β a) with HD HD,
     rewrite exp_I_list_conj at H4, simp at H4, 
     rewrite (iff.symm (decr_prsv a _ b xs)),
-    apply H4, apply mem_map_of_mem _ a, 
-    apply mem_filter_of_pred_and_mem, 
+    apply H4, apply list.mem_map_of_mem _ a, 
+    apply mem_filter_of_mem, 
     apply HD, apply Ha, apply HD, 
-    apply Hb, apply mem_filter_of_pred_and_mem,
+    apply Hb, apply mem_filter_of_mem,
     apply HD, apply Ha, apply allp_filter_cond,
   end

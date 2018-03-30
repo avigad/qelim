@@ -218,16 +218,16 @@ def list_conj : list (fm α) → fm α
 | [] := ⊤' 
 | (p::ps) := and_o p $ list_conj ps 
 
-lemma list_conj_qfree : ∀ (l : list (fm α)), allp qfree l → qfree (list_conj l)  
+lemma list_conj_qfree : ∀ (ps : list (fm α)), (∀ p ∈ ps, qfree p) → qfree (list_conj ps)  
 | [] _ := trivial 
-| (p::ps) H := 
+| (p::ps) h := 
   begin 
     unfold list_conj, apply cases_and_o, trivial, 
-    apply H, simp, apply list_conj_qfree,
-    intros q Hq, apply H, apply or.inr, apply Hq,
+    apply h, simp, apply list_conj_qfree,
+    intros q Hq, apply h, apply or.inr, apply Hq,
     unfold qfree, apply and.intro, 
-    apply H, simp, apply list_conj_qfree,
-    intros q Hq, apply H, apply or.inr, apply Hq
+    apply h, simp, apply list_conj_qfree,
+    intros q Hq, apply h, apply or.inr, apply Hq
   end
 
 def list_disj : list (fm α) → fm α 
@@ -285,19 +285,19 @@ def atoms [decidable_eq α] : fm α → list α
 
 meta def map_fm_prsv_tac :=
 `[unfold map_fm, unfold atoms, 
-  rewrite exp_allp_union, unfold atoms at h,
-  rewrite exp_allp_union at h, cases h with hp hq,
+  rewrite list.forall_mem_union, unfold atoms at h,
+  rewrite list.forall_mem_union at h, cases h with hp hq,
   apply and.intro; apply map_fm_prsv; assumption]
 
 lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β → Prop} 
   {f : α → β} (hf : ∀ a, P a → Q (f a)) :
-  ∀ {p} {hp : allp P (atoms p)}, allp Q (atoms (map_fm f p)) 
-| ⊤' h := begin apply allp_nil end
-| ⊥' h := begin apply allp_nil end
+  ∀ {p} {hp : ∀ a ∈ (atoms p), P a}, ∀ a ∈ (atoms (map_fm f p)), Q a 
+| ⊤' h := begin apply list.forall_mem_nil end
+| ⊥' h := begin apply list.forall_mem_nil end
 | (A' a) h := 
   begin 
     unfold map_fm, unfold atoms, intros b hb, 
-    rewrite exp_mem_singleton at hb, subst hb,
+    rewrite list.mem_singleton at hb, subst hb,
     apply hf, apply h, unfold atoms, apply or.inl rfl
   end
 | (¬' p) h := 
@@ -308,7 +308,7 @@ lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β 
 | (p ∧' q) h := by map_fm_prsv_tac
 | (p ∨' q) h := by map_fm_prsv_tac
 | (∃' p) h := 
-  begin unfold map_fm, unfold atoms, apply allp_nil end
+  begin unfold map_fm, unfold atoms, apply list.forall_mem_nil end
 
 
 def interp (h : list β → α → Prop) : list β → fm α → Prop 

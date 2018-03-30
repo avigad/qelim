@@ -50,10 +50,10 @@ lemma atoms_and_o_subset {p q : fm pbgr.atom} :
 begin
   apply cases_and_o' (λ p' q' r, atoms r ⊆ atoms p' ∪ atoms q') p q;
   intros a ha, 
-  apply mem_union_of_mem_right ha, 
-  apply mem_union_of_mem_left ha, 
-  apply mem_union_of_mem_left ha, 
-  apply mem_union_of_mem_right ha, 
+  apply list.mem_union_right, apply ha, 
+  apply list.mem_union_left, apply ha, 
+  apply list.mem_union_left, apply ha, 
+  apply list.mem_union_right, apply ha, 
   apply ha
 end
 
@@ -93,7 +93,7 @@ lemma lnq_closed_fnormal (f : fm atom → fm atom)
 theorem lnq_prsv 
   (qe : fm pbgr.atom → fm pbgr.atom) 
   (hqe : preserves qe (fnormal int))
-  (hqf : qfree_prsv qe) (hn : normal_prsv int qe) 
+  (hqf : qfree_of_nqfree qe)
   (hi : ∀ p, nqfree p → fnormal int p → ∀ (bs : list int), I (qe p) bs ↔ ∃ b, (I p (b::bs))) : 
 ∀ p, fnormal int p → ∀ (bs : list int), I (lift_nnf_qe int qe p) bs ↔ I p bs :=
 @lnq_prsv_gen pbgr.atom int pbgr.atom_type 
@@ -102,9 +102,9 @@ theorem lnq_prsv
 
 theorem ldq_prsv 
   (qe : list pbgr.atom → fm pbgr.atom) 
-  (hqf : ∀ as, allp dep0 as → qfree (qe as)) 
-  (hn : ∀ as, allp dep0 as → allp normal as → fnormal int (qe as)) 
-  (he : ∀ as, allp dep0 as → allp normal as → qe_prsv int qe as) :
+  (hqf : ∀ as, (∀ a ∈ as, dep0 a) → qfree (qe as)) 
+  (hn : ∀ as, (∀ a ∈ as, dep0 a) → (∀ a ∈ as, normal a) → fnormal int (qe as)) 
+  (he : ∀ as, (∀ a ∈ as, dep0 a) → (∀ a ∈ as, normal a) → qe_prsv int qe as) :
   ∀ p, fnormal int p → ∀ (bs : list int), I (lift_dnf_qe int qe p) bs ↔ I p bs :=
 @ldq_prsv_gen pbgr.atom int pbgr.atom_type _ hqf hn he 
 

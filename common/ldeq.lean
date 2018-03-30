@@ -35,7 +35,7 @@ begin
   apply ex_iff_ex, intro b, 
   apply iff.intro, intros HL a Ha, 
   cases (dec_triv α β a) with HT HT, apply HL,
-  apply mem_filter_of_pred_and_mem, apply HT, apply Ha,
+  apply mem_filter_of_mem, apply HT, apply Ha,
   apply true_triv, apply HT, 
   intros HR a Ha, apply HR, apply mem_of_mem_filter,
   apply Ha, 
@@ -52,7 +52,7 @@ begin
   apply (atom_eq_type.subst_prsv H2)^.elim_left,
   apply HL, apply mem_map_of_mem,
   have HM : a ∈ (eqn::as'), apply (H3 a)^.elim_left,
-  apply mem_filter_of_pred_and_mem, apply HT,
+  apply mem_filter_of_mem, apply HT,
   apply Ha, cases HM with HM HM, 
   apply absurd HM HE, apply HM,
   rewrite HE,  
@@ -60,7 +60,7 @@ begin
   apply atom_eq_type.true_subst, apply H2,
   apply true_triv, apply HT,
   intros HR p Hp, 
-  cases (ex_arg_of_mem_map Hp) with a Ha,
+  cases (list.exists_of_mem_map Hp) with a Ha,
   cases Ha with Ha Ha', rewrite Ha', 
   clear Hp, clear Ha', clear p, 
   apply (atom_eq_type.subst_prsv H2)^.elim_right,
@@ -72,7 +72,7 @@ begin
   apply mem_of_mem_filter H4, 
   apply dest_pos, 
   have H5 := (H3 eqn)^.elim_right _,
-  apply pred_of_mem_filter_pred H5, 
+  apply of_mem_filterH5, 
   apply or.inl, refl, apply or.inr Ha,
   have H5 := (H3 eqn)^.elim_right _,
   apply mem_of_mem_filter H5, apply or.inl, refl
@@ -89,7 +89,7 @@ begin
   apply Hqe, intros x Hx, apply Hl,
   apply mem_of_mem_filter Hx, cases pr with eqn as',
   apply list_conj_qfree, intros a Ha, 
-  cases (ex_arg_of_mem_map Ha) with a' Ha',
+  cases (list.exists_of_mem_map Ha) with a' Ha',
   rewrite Ha'^.elim_right, simp 
 end
 

@@ -2,7 +2,6 @@ import .correctness ..common.arith
 
 open pbgr
 
-#check nat.has_div
 def hd_coeff_one : int → atom → atom 
 | m (atom.le i (0::ks)) := (atom.le i (0::ks))   
 | m (atom.le i (k::ks)) := 
@@ -16,21 +15,78 @@ def hd_coeff_one : int → atom → atom
 | m (atom.ndvd d i (k::ks)) := 
   let m' := int.div m k in 
   atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
-| m a := a
+| m a := a 
+
+
+lemma hco_dvd_nonzero (m d i k ks) : 
+  k ≠ 0 → 
+  hd_coeff_one m (atom.dvd d i (k::ks)) = 
+ (let m' := int.div m k in 
+  atom.dvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)) := 
+begin
+  intro hne, cases k with n n, cases n, trivial, 
+  trivial, trivial, 
+end
+
+lemma hco_ndvd_nonzero (m d i k ks) : 
+  k ≠ 0 → 
+  hd_coeff_one m (atom.ndvd d i (k::ks)) = 
+ (let m' := int.div m k in 
+  atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)) := 
+begin
+  intro hne, cases k with n n, cases n, trivial, 
+  trivial, trivial, 
+end
+
 
 def hd_coeffs_one (p : fm atom) : fm atom := 
 let m := zlcms (list.map hd_coeff (atoms_dep0 int p)) in 
 A' (atom.dvd m 0 [1]) ∧' (map_fm (hd_coeff_one m) p)
 
-lemma hd_coeffs_one_normal_prsv_aux  
+lemma hd_coeffs_one_normal_prsv_aux_1 
 (p : fm atom)
 (hp : fnormal ℤ p)
 (z : int)
-(hne : z ≠ 0)
-(a : atom)
+(hne : z ≠ 0) :
+∀ (a : atom)
 (ha1 : atom_type.normal ℤ a)
-(ha2 : divides (hd_coeff a) z)
-: atom_type.normal ℤ (hd_coeff_one (z) a) := sorry
+(ha2 : has_dvd.dvd (hd_coeff a) z),
+ atom_type.normal ℤ (hd_coeff_one z a) 
+| (atom.le i ks) ha1 ha2 := 
+  begin
+    cases ks with k ks, trivial, cases k with n, 
+    cases n; trivial, trivial
+  end
+| (atom.dvd d i ks) ha1 ha2 := 
+  begin
+    cases ks with k ks, trivial, 
+    cases (classical.em (k = 0)) with hk hk, subst hk,
+    trivial, rewrite hco_dvd_nonzero, simp,
+    apply mul_nonzero, 
+    unfold hd_coeff at ha2,
+    unfold list.head_dft at ha2,
+    apply div_nonzero, apply hne, apply ha2, 
+    apply ha1, apply hk   
+  end
+| (atom.ndvd d i ks) ha1 ha2 := 
+  begin
+    cases ks with k ks, trivial, 
+    cases (classical.em (k = 0)) with hk hk, subst hk,
+    trivial, rewrite hco_ndvd_nonzero, simp,
+    apply mul_nonzero, 
+    unfold hd_coeff at ha2,
+    unfold list.head_dft at ha2,
+    apply div_nonzero, apply hne, apply ha2, 
+    apply ha1, apply hk   
+  end
+
+lemma hd_coeffs_one_normal_prsv_aux_2 
+(p : fm atom)
+(hp : fnormal ℤ p)
+(hne : zlcms (list.map hd_coeff (atoms_dep0 ℤ p)) ≠ 0)
+(a : atom)
+(ha : a ∈ atoms p) :
+has_dvd.dvd (hd_coeff a) (zlcms (list.map hd_coeff (atoms_dep0 ℤ p))) := sorry 
 
 lemma hd_coeffs_one_normal_prsv : 
   preserves hd_coeffs_one (fnormal int) := 
@@ -39,23 +95,24 @@ begin
   unfold fnormal, 
   have hne : zlcms (list.map hd_coeff (atoms_dep0 ℤ p)) ≠ 0, 
   apply zlcms_neq_zero, 
-  apply allp_map (atom_type.dep0 int) _ _, 
-  apply pbgr.atom_type, unfold atoms_dep0,
-  apply allp_filter_cond _ _, 
+  apply @list.forall_mem_map_of_forall_mem _ _ (atom_type.dep0 int) (λ (z : int), z ≠ 0) hd_coeff (atoms_dep0 int p), 
+  unfold atoms_dep0, intros a ha,
+  apply list.of_mem_filter ha,
   intros a ha, apply ha, 
   apply and.intro, intro hc, apply hne hc,
   rewrite fnormal_iff_fnormal_alt,
   unfold fnormal_alt, 
-  apply map_fm_prsv 
+  apply @map_fm_prsv _ _ _ _
     (λ x, atom_type.normal int x ∧ 
-          divides 
-            (hd_coeff x) 
-            (zlcms (list.map hd_coeff (atoms_dep0 ℤ p)))),
+          (has_dvd.dvd (hd_coeff x) (zlcms (list.map hd_coeff (atoms_dep0 ℤ p)))))
+    (atom_type.normal int),
   intros a ha, cases ha with ha1 ha2,
-  apply hd_coeffs_one_normal_prsv_aux p hp _ hne _ ha1 ha2,
+  apply hd_coeffs_one_normal_prsv_aux_1 p hp _ hne _ ha1 ha2,
   intros a ha, apply and.intro, 
   rewrite fnormal_iff_fnormal_alt at hp, apply hp, 
   apply ha, 
+  apply hd_coeffs_one_normal_prsv_aux_2, 
+  apply hp, apply hne, apply ha
 end
 
 def inf_minus : fm atom → fm atom 
@@ -112,10 +169,18 @@ begin
   apply hp
 end
 
+lemma qfree_sqe_cooper_of_nqfree : qfree_of_nqfree sqe_cooper := sorry
+
 def qe_cooper := lift_nnf_qe int sqe_cooper
 
-#check @pbgr.lnq_prsv 
+lemma sqe_cooper_prsv :  ∀ (p : fm atom),
+    nqfree p → fnormal ℤ p → ∀ (bs : list ℤ), I (sqe_cooper p) bs ↔ ∃ (b : ℤ), I p (b :: bs) := sorry
+
 lemma qe_cooper_prsv : 
   ∀ p, fnormal int p → ∀ (bs : list int), I (qe_cooper p) bs ↔ I p bs :=
-  @pbgr.lnq_prsv sqe_cooper _ _ _ _
+  @pbgr.lnq_prsv sqe_cooper 
+    sqe_cooper_normal_prsv 
+    qfree_sqe_cooper_of_nqfree 
+    sqe_cooper_prsv
+    
   

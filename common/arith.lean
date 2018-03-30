@@ -1,4 +1,4 @@
-import .list 
+import .list ...mathlib.data.int.basic ...mathlib.data.nat.gcd
 
 def divides (m n : nat) : Prop := ∃ k, m * k = n 
 
@@ -42,6 +42,31 @@ lemma gcd_divides : ∀ (m n : nat), divides (nat.gcd m n) m ∧ divides (nat.gc
     apply nat.mod_add_div
   end
 
+lemma nat.mul_nonzero {m n : nat} : m ≠ 0 → n ≠ 0 → m * n ≠ 0 := 
+begin
+  intros hm hn hc, apply hm,
+  apply eq.trans, apply eq.symm, 
+  apply nat.mul_div_cancel,
+  apply gt_zero_of_neq_zero, apply hn,
+  rewrite hc, apply nat.zero_div
+end
+
+lemma mul_nonzero {z y : int} : z ≠ 0 → y ≠ 0 → z * y ≠ 0 := 
+begin
+  intros hm hn hc, apply hm,
+  apply eq.trans, apply eq.symm, 
+  apply int.mul_div_cancel,
+  apply hn, rewrite hc, apply int.zero_div
+end 
+
+lemma div_nonzero (z y : int) : z ≠ 0 → has_dvd.dvd y z → (z / y) ≠ 0 := 
+begin
+  intros hz hy hc, apply hz,
+  apply eq.trans, apply eq.symm, 
+  apply int.div_mul_cancel, apply hy,
+  rewrite hc, apply zero_mul,
+end
+
 theorem gcd_neq_zero : ∀ (m n : nat), m ≠ 0 → n ≠ 0 → (nat.gcd m n) ≠ 0 
 | 0 n hm hn := begin exfalso, apply hm, refl end
 | (nat.succ m) n hm hn := 
@@ -55,19 +80,11 @@ theorem gcd_neq_zero : ∀ (m n : nat), m ≠ 0 → n ≠ 0 → (nat.gcd m n) �
 
 lemma lcm_neq_zero (m n : nat) : m ≠ 0 → n ≠ 0 → (nat.lcm m n) ≠ 0 :=
 begin
-  intros hm hn, unfold nat.lcm, 
-  rewrite nat.div_def, 
-  apply (@cases_ite _ _ (λ x, x ≠ 0)), simp,
-  intros h hc, rewrite nat.succ_add at hc,
-  cases hc, intro hc, 
-  exfalso, apply hc, apply and.intro, 
-  apply gt_zero_of_neq_zero, 
-  apply gcd_neq_zero; assumption, 
-  apply le_trans, apply divisor_le,
-  apply and.elim_left (gcd_divides _ _), apply hm,
-  cases (ex_pred_of_neq_zero n hn) with n' hn',
-  subst hn', rewrite nat.mul_succ,
-  apply nat.le_add_left
+  intros hm hn hc,
+  have h := nat.gcd_mul_lcm m n,
+  rewrite hc at h, rewrite mul_zero at h,
+  apply nat.mul_nonzero hm hn, 
+  apply eq.symm h
 end
 
 lemma of_nat_neq_zero (n : nat) : n ≠ 0 → int.of_nat n ≠ 0 :=
@@ -89,7 +106,7 @@ begin
   simp, intro hc, cases hc
 end
 
-lemma zlcms_neq_zero : ∀ {zs} {hzs : allp (λ (z : int), z ≠ 0) zs}, zlcms zs ≠ 0
+lemma zlcms_neq_zero : ∀ {zs : list int} {hzs : ∀ (z : int), z ∈ zs → z ≠ 0}, zlcms zs ≠ 0
 | [] _ := begin intro hc, cases hc end
 | (z::zs) h :=
   begin
@@ -98,5 +115,5 @@ lemma zlcms_neq_zero : ∀ {zs} {hzs : allp (λ (z : int), z ≠ 0) zs}, zlcms z
     apply nat_abs_neq_zero, apply h, apply or.inl rfl,
     let ih := @zlcms_neq_zero zs _, unfold zlcms at ih,
     apply neq_zero_of_of_nat_neq_zero, apply ih, 
-    apply allp_tail_of_allp h 
+    apply list.forall_mem_of_forall_mem_cons h
   end

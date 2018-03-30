@@ -42,7 +42,7 @@ open tactic
 
 lemma lnq_prsv_gen 
   [Hα : atom_type α β] (qe : fm α → fm α) 
-  (hqe : qfree_prsv qe) 
+  (hqe : qfree_of_nqfree qe) 
   (r : fm α → Prop) 
   (hdc : down_closed r)
   (hqc : preserves qe r)
@@ -87,7 +87,7 @@ lemma lnq_prsv_gen
   end
 
 lemma lnq_prsv [Hα : atom_type α β] (qe : fm α → fm α) 
-  (hqe : qfree_prsv qe) 
+  (hqe : qfree_of_nqfree qe) 
   (hi : ∀ (p : fm α), nqfree p → ∀ (xs : list β), I (qe p) xs ↔ ∃ x, I p (x::xs)) : 
   ∀ (p : fm α) (xs : list β), I (lift_nnf_qe β qe p) xs ↔ I p xs :=
 begin

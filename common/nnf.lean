@@ -67,13 +67,13 @@ lemma nnf_nqfree [atom_type α β] :
 (λ _ _, trivial) 
 (λ q r Hq Hr Hqr, 
   begin
-    rewrite nnf_exp_and, cases Hqr, 
-    apply (and.intro (Hq left) (Hr right))
+    rewrite nnf_exp_and, cases Hqr with hqr1 hqr2, 
+    apply (and.intro (Hq hqr1) (Hr hqr2))
   end)
 (λ q r Hq Hr Hqr, 
   begin
-    rewrite nnf_exp_or, cases Hqr, 
-    apply (and.intro (Hq left) (Hr right))
+    rewrite nnf_exp_or, cases Hqr with hqr1 hqr2, 
+    apply (and.intro (Hq hqr1) (Hr hqr2))
   end)
 (λ q, fm.rec_on q 
   (λ _ _, trivial) 

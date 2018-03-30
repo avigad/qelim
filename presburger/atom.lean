@@ -2,6 +2,8 @@ import ..common.atom ..common.list
 
 namespace pbgr 
 
+open list
+
 variables {α β : Type}
 
 inductive atom : Type 
@@ -17,9 +19,9 @@ open atom
 def divides (m n : int) : Prop := int.rem n m = 0
 
 def val : list int → atom →  Prop 
-| xs (le i ks) := i ≤ dot_prod ks xs
-| xs (dvd d i ks) := divides d (i + dot_prod ks xs)
-| xs (ndvd d i ks) := ¬ (divides d (i + dot_prod ks xs))
+| xs (le i ks) := i ≤ list.dot_prod ks xs
+| xs (dvd d i ks) := divides d (i + list.dot_prod ks xs)
+| xs (ndvd d i ks) := ¬ (divides d (i + list.dot_prod ks xs))
 
 def neg : atom → fm atom
 | (le i ks) := fm.atom (atom.le (1 - i) (list.map has_neg.neg ks))
@@ -33,11 +35,11 @@ def neg_prsv : ∀ (a : atom) (xs : list ℤ), interp val xs (neg a) ↔ interp 
     unfold val, 
     apply 
     (calc 
-          (1 - i ≤ dot_prod (list.map has_neg.neg ks) xs) 
+          (1 - i ≤ list.dot_prod (list.map has_neg.neg ks) xs) 
         ↔ (has_neg.neg (dot_prod (list.map has_neg.neg ks) xs) ≤ has_neg.neg (1 - i)) : 
           by {apply iff.intro, apply neg_le_neg, apply le_of_neg_le_neg}
     ... ↔ (dot_prod ks xs ≤ has_neg.neg (1 - i)) : 
-          begin rewrite (@exp_neg_dot_prod int _ ks xs), simp, end
+          begin rewrite (@neg_dot_prod int _ ks xs), simp, end
     ... ↔ (dot_prod ks xs ≤ i - 1) : 
            by rewrite neg_sub
     ... ↔ (dot_prod ks xs < i) : 
@@ -148,14 +150,14 @@ def asubst (i') (ks') : atom → atom
 | a := a
 
 meta def asubst_prsv_tac := 
-`[have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
+`[unfold asubst, unfold val, rewrite add_assoc,
+  have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
             = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
   rewrite cons_dot_prod_cons,
-  rewrite mul_add, rewrite mul_comm, 
-  simp, apply add_left, 
+  rewrite mul_add, rewrite mul_comm, simp, 
   rewrite comp_add_dot_prod, 
   rewrite map_mul_dot_prod,
-  simp, rewrite he]
+  simp, rewrite mul_comm at he, rewrite he]
 
 meta def asubst_prsv_aux := 
 `[unfold asubst, unfold val, 
@@ -168,25 +170,17 @@ lemma asubst_prsv (i' ks' xs) :
     unfold asubst, simp, unfold val, 
     rewrite add_le_iff_le_sub, simp, 
 
-have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
-            = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
-  rewrite cons_dot_prod_cons,
-  rewrite mul_add, rewrite mul_comm, 
-  simp, apply add_left, 
-  rewrite comp_add_dot_prod, 
-  rewrite map_mul_dot_prod,
-  simp, rewrite he
+    have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
+               = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
+               
+    rewrite cons_dot_prod_cons,
+    rewrite mul_add, rewrite mul_comm, simp, 
+    rewrite comp_add_dot_prod, 
+    rewrite map_mul_dot_prod,
+    simp, rewrite mul_comm at he, rewrite he
   end
-| (dvd d i (k::ks))  := 
-  begin
-    unfold asubst, simp, unfold val,
-    rewrite add_assoc, asubst_prsv_tac
-  end
-| (ndvd d i (k::ks)) := 
-  begin
-    unfold asubst, simp, unfold val,
-    rewrite add_assoc, asubst_prsv_tac
-  end
+| (dvd d i (k::ks))  := by asubst_prsv_tac
+| (ndvd d i (k::ks)) := by asubst_prsv_tac
 | (le i [])     := by asubst_prsv_aux
 | (dvd d i [])  := by asubst_prsv_aux
 | (ndvd d i []) := by asubst_prsv_aux

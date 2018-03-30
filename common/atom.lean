@@ -13,7 +13,7 @@ class atom_type (α β : Type) :=
 (dec_eq : decidable_eq α)
 (normal : α → Prop)
 (dec_normal : decidable_pred normal)
-(neg_prsv_normal : ∀ a, normal a → allp normal (atoms (neg a)))
+(neg_prsv_normal : ∀ a, (normal a → ∀ a' ∈ (atoms (neg a)), normal a'))
 (decr_prsv_normal : ∀ a, normal a → ¬ dep0 a → normal (decr a))
 
 class atom_eq_type (α β : Type) extends atom_type α β :=
@@ -91,7 +91,7 @@ lemma exp_I_bot [atom_type α β] (xs) : @I α β _ ⊥' xs = false :=
 by unfold I; unfold interp
 
 def fnormal_alt (β) [atom_type α β] (p : fm α) := 
-  allp (atom_type.normal β) (@atoms _ (atom_type.dec_eq _ β) p)
+  ∀ a ∈ (@atoms _ (atom_type.dec_eq _ β) p), atom_type.normal β a
 
 def fnormal (β) [atom_type α β] : fm α → Prop 
 | ⊤' := true
@@ -119,13 +119,13 @@ lemma fnormal_iff_fnormal_alt [atom_type α β] :
   begin 
     unfold fnormal, 
     repeat {rewrite fnormal_iff_fnormal_alt}, 
-    apply iff.symm, apply exp_allp_union
+    apply iff.symm, apply list.forall_mem_union
   end
 | (p ∨' q) := 
   begin 
     unfold fnormal, 
     repeat {rewrite fnormal_iff_fnormal_alt}, 
-    apply iff.symm, apply exp_allp_union
+    apply iff.symm, apply list.forall_mem_union
   end
 | (¬' p) := 
   begin 
@@ -139,7 +139,7 @@ lemma fnormal_iff_fnormal_alt [atom_type α β] :
   end
 
 def disj_to_prop (β) [atom_type α β] (as : list α) (bs : list β) : Prop :=
-  allp (atom_type.val bs) as
+  ∀ a ∈ as, atom_type.val bs a
 
 instance atoms_dec_eq [atom_type α β] : decidable_eq α := 
 atom_type.dec_eq α β
