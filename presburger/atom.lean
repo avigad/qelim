@@ -16,12 +16,10 @@ by tactic.mk_dec_eq_instance
 
 open atom 
 
-def divides (m n : int) : Prop := int.rem n m = 0
-
 def val : list int → atom →  Prop 
 | xs (le i ks) := i ≤ list.dot_prod ks xs
-| xs (dvd d i ks) := divides d (i + list.dot_prod ks xs)
-| xs (ndvd d i ks) := ¬ (divides d (i + list.dot_prod ks xs))
+| xs (dvd d i ks) := has_dvd.dvd d (i + list.dot_prod ks xs)
+| xs (ndvd d i ks) := ¬ (has_dvd.dvd d (i + list.dot_prod ks xs))
 
 def neg : atom → fm atom
 | (le i ks) := fm.atom (atom.le (1 - i) (list.map has_neg.neg ks))

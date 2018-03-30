@@ -1,6 +1,10 @@
 variables {α β γ : Type}
 
-
+lemma or_of_not_imp_right {p q} : (¬ q → p) → p ∨ q :=
+begin
+  intro h, cases (classical.em q) with hq hq,
+  apply or.inr hq, apply or.inl (h hq)
+end
 
 lemma add_le_iff_le_sub (a b c : int) : a + b ≤ c ↔ a ≤ c - b := 
 iff.intro (le_sub_right_of_add_le) (add_le_of_le_sub_right)
@@ -132,14 +136,9 @@ begin
   existsi x, apply (H x Hx)
 end
 
-def lcms : list nat → nat 
-| [] := 1
-| (n::ns) := nat.lcm n (lcms ns)
-
-def zlcms (zs : list int) : int :=
-lcms (list.map int.nat_abs zs)
 
 open tactic
+
 
 meta def split_em (p : Prop) : tactic unit := 
 `[cases (classical.em p)]

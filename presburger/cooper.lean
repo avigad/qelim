@@ -38,17 +38,15 @@ begin
 end
 
 def hd_coeffs_one (p : fm atom) : fm atom := 
-let m := zlcms (list.map hd_coeff (atoms_dep0 int p)) in 
+let m := int.zlcms (list.map hd_coeff (atoms_dep0 int p)) in 
 A' (atom.dvd m 0 [1]) ∧' (map_fm (hd_coeff_one m) p)
 
-lemma hd_coeffs_one_normal_prsv_aux_1 
-(p : fm atom)
-(hp : fnormal ℤ p)
+lemma normal_hco_atom
 (z : int)
 (hne : z ≠ 0) :
 ∀ (a : atom)
 (ha1 : atom_type.normal ℤ a)
-(ha2 : has_dvd.dvd (hd_coeff a) z),
+(ha2 : has_dvd.dvd (hd_coeff a) z ∨ hd_coeff a = 0),
  atom_type.normal ℤ (hd_coeff_one z a) 
 | (atom.le i ks) ha1 ha2 := 
   begin
@@ -58,59 +56,82 @@ lemma hd_coeffs_one_normal_prsv_aux_1
 | (atom.dvd d i ks) ha1 ha2 := 
   begin
     cases ks with k ks, trivial, 
-    cases (classical.em (k = 0)) with hk hk, subst hk,
-    trivial, rewrite hco_dvd_nonzero, simp,
-    apply mul_nonzero, 
+    cases (classical.em (k = 0)) with hk hk, 
+    subst hk, trivial, 
+    cases ha2 with ha2 ha2,
+    rewrite hco_dvd_nonzero, simp,
+    apply int.mul_nonzero, 
     unfold hd_coeff at ha2,
     unfold list.head_dft at ha2,
-    apply div_nonzero, apply hne, apply ha2, 
-    apply ha1, apply hk   
+    apply int.div_nonzero, apply hne, apply ha2, 
+    apply ha1, apply hk, 
+    exfalso, apply hk ha2
   end
 | (atom.ndvd d i ks) ha1 ha2 := 
   begin
     cases ks with k ks, trivial, 
-    cases (classical.em (k = 0)) with hk hk, subst hk,
-    trivial, rewrite hco_ndvd_nonzero, simp,
-    apply mul_nonzero, 
+    cases (classical.em (k = 0)) with hk hk, 
+    subst hk, trivial, 
+    cases ha2 with ha2 ha2,
+    rewrite hco_ndvd_nonzero, simp,
+    apply int.mul_nonzero, 
     unfold hd_coeff at ha2,
     unfold list.head_dft at ha2,
-    apply div_nonzero, apply hne, apply ha2, 
-    apply ha1, apply hk   
+    apply int.div_nonzero, apply hne, apply ha2, 
+    apply ha1, apply hk,   
+    exfalso, apply hk ha2 
   end
 
-lemma hd_coeffs_one_normal_prsv_aux_2 
-(p : fm atom)
-(hp : fnormal ℤ p)
-(hne : zlcms (list.map hd_coeff (atoms_dep0 ℤ p)) ≠ 0)
-(a : atom)
-(ha : a ∈ atoms p) :
-has_dvd.dvd (hd_coeff a) (zlcms (list.map hd_coeff (atoms_dep0 ℤ p))) := sorry 
+meta def fnormal_map_hco_of_fnormal_tac :=
+ `[unfold map_fm, unfold fnormal,
+   cases hn with hnp hnq, unfold atoms at hnz, 
+   rewrite list.forall_mem_union at hnz,
+   cases hnz with hnzp hnzq,  apply and.intro; 
+   apply fnormal_map_hco_of_fnormal; assumption]
+
+lemma fnormal_map_hco_of_fnormal (z : int) (hz : z ≠ 0) :
+  ∀ (p : fm atom), (fnormal ℤ p) 
+  → (∀ a ∈ atoms p, has_dvd.dvd (hd_coeff a) z ∨ hd_coeff a = 0) 
+  → fnormal ℤ (map_fm (hd_coeff_one z) p)  
+| ⊤' hn hnz := by unfold map_fm 
+| ⊥' hn hnz := by unfold map_fm 
+| (A' a) hn hnz := 
+  begin
+    unfold map_fm, unfold fnormal, unfold fnormal at hn,
+    apply normal_hco_atom z hz _ hn, apply hnz, 
+    unfold atoms, simp,
+  end
+| (p ∧' q) hn hnz := by fnormal_map_hco_of_fnormal_tac
+| (p ∨' q) hn hnz := by fnormal_map_hco_of_fnormal_tac
+| (¬' p) hp hpz :=
+  begin
+    unfold map_fm, unfold fnormal, 
+    apply fnormal_map_hco_of_fnormal p hp hpz,
+  end
+| (∃' p) hn hnz := by unfold map_fm
 
 lemma hd_coeffs_one_normal_prsv : 
   preserves hd_coeffs_one (fnormal int) := 
 begin
   intros p hp, unfold hd_coeffs_one, simp, 
   unfold fnormal, 
-  have hne : zlcms (list.map hd_coeff (atoms_dep0 ℤ p)) ≠ 0, 
-  apply zlcms_neq_zero, 
-  apply @list.forall_mem_map_of_forall_mem _ _ (atom_type.dep0 int) (λ (z : int), z ≠ 0) hd_coeff (atoms_dep0 int p), 
+  have hne : int.zlcms (list.map hd_coeff (atoms_dep0 ℤ p)) ≠ 0, 
+  apply int.zlcms_neq_zero, 
+  apply @list.forall_mem_map_of_forall_mem _ _ 
+          (atom_type.dep0 int) 
+          (λ (z : int), z ≠ 0) 
+          hd_coeff 
+          (atoms_dep0 int p), 
   unfold atoms_dep0, intros a ha,
   apply list.of_mem_filter ha,
   intros a ha, apply ha, 
   apply and.intro, intro hc, apply hne hc,
-  rewrite fnormal_iff_fnormal_alt,
-  unfold fnormal_alt, 
-  apply @map_fm_prsv _ _ _ _
-    (λ x, atom_type.normal int x ∧ 
-          (has_dvd.dvd (hd_coeff x) (zlcms (list.map hd_coeff (atoms_dep0 ℤ p)))))
-    (atom_type.normal int),
-  intros a ha, cases ha with ha1 ha2,
-  apply hd_coeffs_one_normal_prsv_aux_1 p hp _ hne _ ha1 ha2,
-  intros a ha, apply and.intro, 
-  rewrite fnormal_iff_fnormal_alt at hp, apply hp, 
-  apply ha, 
-  apply hd_coeffs_one_normal_prsv_aux_2, 
-  apply hp, apply hne, apply ha
+  apply fnormal_map_hco_of_fnormal _ hne _ hp, 
+  intros a ha, apply or_of_not_imp_right,
+  intro haz, apply int.dvd_zlcms, apply haz,
+  rewrite list.mem_map, existsi a, apply and.intro,
+  unfold atoms_dep0, apply list.mem_filter_of_mem,
+  apply ha, apply haz, refl
 end
 
 def inf_minus : fm atom → fm atom 
@@ -147,7 +168,7 @@ list.map (λ x, -x) l
 
 def qe_cooper_one (p : fm atom) : fm atom := 
   let as := atoms_dep0 int p in 
-  let d := zlcms (list.map divisor as) in
+  let d := int.zlcms (list.map divisor as) in
   let lbs := list.omap get_lb as in
   or_o 
     (disj (list.irange d) (λ n, subst n [] (inf_minus p))) 
