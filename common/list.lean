@@ -401,7 +401,7 @@ begin unfold nth_dft, simp  end
 lemma nth_dft_head {a a' : α} {as : list α} : nth_dft a' (a::as) 0 = a := 
 begin unfold nth_dft, simp end
 
-def append_pair {α : Type} : (list α × list α) → list α  
+@[simp] def append_pair {α : Type} : (list α × list α) → list α  
 | (l1,l2) := l1 ++ l2 
 
 def all_true (ps : list Prop) : Prop := ∀ (p : Prop), p ∈ ps → p
@@ -409,12 +409,54 @@ def all_true (ps : list Prop) : Prop := ∀ (p : Prop), p ∈ ps → p
 lemma all_true_nil : all_true [] := 
 by {intros _ H, cases H}
 
-def disj_list : list Prop → Prop 
-| [] := false
-| (p::ps) := p ∨ disj_list ps
+-- def disj_list : list Prop → Prop 
+-- | [] := false
+-- | (p::ps) := p ∨ disj_list ps
 
 def some_true (ps : list Prop) : Prop := ∃ (p : Prop), p ∈ ps ∧ p
 
+lemma some_true_nil : some_true [] ↔ false :=
+begin
+  apply iff.intro; intro h, cases h with p hp,
+  cases hp^.elim_left, cases h
+end
+
+lemma some_true_cons (p ps) : some_true (p::ps) ↔ (p ∨ some_true ps) :=
+begin
+  apply iff.intro; intro h, cases h with q hq,
+  cases hq with hq1 hq2, rewrite mem_cons_iff at hq1,
+  cases hq1 with hq1 hq1, subst hq1, apply or.inl hq2,
+  apply or.inr, existsi q, apply and.intro hq1 hq2,
+  cases h with h h, existsi p, simp, apply h,
+  cases h with q hq, cases hq with hq1 hq2,
+  existsi q, apply and.intro (or.inr hq1) hq2
+end
+
+lemma some_true_append {ps1 ps2} : some_true (ps1 ++ ps2) ↔ (some_true ps1 ∨ some_true ps2) := 
+begin
+  apply iff.intro; intro h, cases h with p hp,
+  cases hp with hp1 hp2, rewrite mem_append at hp1,
+  cases hp1 with hp1 hp1, 
+  apply or.inl, existsi p, apply and.intro; assumption, 
+  apply or.inr, existsi p, apply and.intro; assumption, 
+  cases h with h h; cases h with p hp; cases hp with hp1 hp2;
+  existsi p; apply and.intro, 
+  apply mem_append_left, apply hp1, apply hp2,
+  apply mem_append_right, apply hp1, apply hp2
+end
+
+lemma forall_mem_append {P : α → Prop} {as1 as2 : list α} : 
+  (∀ a ∈ (as1 ++ as2), P a) ↔ ((∀ a ∈ as1, P a) ∧ (∀ a ∈ as2, P a)) := 
+begin
+  apply iff.intro; intro h, 
+  apply and.intro; intros a ha; apply h,
+  apply mem_append_left _ ha,
+  apply mem_append_right _ ha,
+  intros a ha, rewrite mem_append at ha,
+  cases h with hl hr, cases ha with ha ha,
+  apply hl _ ha, apply hr _ ha
+end
+/-
 lemma some_true_iff_disj_list : 
   ∀ {ps : list Prop}, some_true ps ↔ disj_list ps 
 | [] :=
@@ -463,51 +505,23 @@ lemma disj_list_iff_some_true : ∀ (ps : list Prop), disj_list ps ↔ some_true
     existsi p', apply (and.intro HM Hp'^.elim_right)
 
   end
+-/
 
-lemma mem_append_of_mem_or_mem : ∀ {l1 l2 : list α} {a : α}, a ∈ l1 ∨ a ∈ l2 → a ∈ (l1 ++ l2)  
-| [] l2 a := 
-  begin intro H, cases H with H H, cases H, simp, apply H end
-| (a'::l1) l2 a:= 
-  begin
-    unfold has_mem.mem, unfold list.mem, intro H, 
-    cases H with H H, cases H with H1 H2, 
-    apply or.inl, apply H1, 
-    apply or.inr, 
-    apply mem_append_of_mem_or_mem,
-    apply or.inl, apply H2, 
-    apply or.inr, 
-    apply mem_append_of_mem_or_mem,
-    apply or.inr, apply H 
-  end
 
-lemma mem_or_mem_of_mem_append : ∀ {l1 l2 : list α} {a : α}, a ∈ (l1 ++ l2) → a ∈ l1 ∨ a ∈ l2 
-| [] l2 a H := 
-  begin 
-    apply or.inr, apply H 
-  end
-| (a'::l1) l2 a H := 
-  begin 
-    cases H with H H, 
-    apply or.inl, apply or.inl, apply H, 
-    cases (mem_or_mem_of_mem_append H) with H1 H1 ; clear H,
-    apply or.inl, apply or.inr H1,
-    apply or.inr H1
-  end
-
-lemma disj_list_dist_append (l1 l2 : list Prop) : disj_list (l1 ++ l2) = (disj_list l1 ∨ disj_list l2) :=  
-begin
-  repeat {rewrite disj_list_iff_some_true}, 
-  apply propext, apply iff.intro,
-  intro H, cases H with x Hx, 
-  cases Hx with Hl Hr, cases (mem_or_mem_of_mem_append Hl) with HM HM, 
-  apply or.inl, existsi x, apply and.intro HM Hr,
-  apply or.inr, existsi x, apply and.intro HM Hr,
-  intro H, cases H with H H; cases H with x Hx ; cases Hx with Hl Hr ; existsi x ; apply and.intro, 
-  apply mem_append_of_mem_or_mem, 
-  apply or.inl, apply Hl, apply Hr, 
-  apply mem_append_of_mem_or_mem, 
-  apply or.inr, apply Hl, apply Hr 
-end
+-- lemma disj_list_dist_append (l1 l2 : list Prop) : disj_list (l1 ++ l2) = (disj_list l1 ∨ disj_list l2) :=  
+-- begin
+--   repeat {rewrite disj_list_iff_some_true}, 
+--   apply propext, apply iff.intro,
+--   intro H, cases H with x Hx, 
+--   cases Hx with Hl Hr, cases (mem_or_mem_of_mem_append Hl) with HM HM, 
+--   apply or.inl, existsi x, apply and.intro HM Hr,
+--   apply or.inr, existsi x, apply and.intro HM Hr,
+--   intro H, cases H with H H; cases H with x Hx ; cases Hx with Hl Hr ; existsi x ; apply and.intro, 
+--   apply mem_append_of_mem_or_mem, 
+--   apply or.inl, apply Hl, apply Hr, 
+--   apply mem_append_of_mem_or_mem, 
+--   apply or.inr, apply Hl, apply Hr 
+-- end
 
 
 -- def ex_arg_of_mem_map {f : α → β} {b : β} : 

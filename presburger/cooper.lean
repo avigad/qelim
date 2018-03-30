@@ -17,7 +17,6 @@ def hd_coeff_one : int → atom → atom
   atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
 | m a := a 
 
-
 lemma hco_dvd_nonzero (m d i k ks) : 
   k ≠ 0 → 
   hd_coeff_one m (atom.dvd d i (k::ks)) = 
@@ -37,7 +36,6 @@ begin
   intro hne, cases k with n n, cases n, trivial, 
   trivial, trivial, 
 end
-
 
 def hd_coeffs_one (p : fm atom) : fm atom := 
 let m := zlcms (list.map hd_coeff (atoms_dep0 int p)) in 
@@ -173,8 +171,9 @@ lemma qfree_sqe_cooper_of_nqfree : qfree_of_nqfree sqe_cooper := sorry
 
 def qe_cooper := lift_nnf_qe int sqe_cooper
 
-lemma sqe_cooper_prsv :  ∀ (p : fm atom),
-    nqfree p → fnormal ℤ p → ∀ (bs : list ℤ), I (sqe_cooper p) bs ↔ ∃ (b : ℤ), I p (b :: bs) := sorry
+lemma sqe_cooper_prsv :  
+  ∀ (p : fm atom), nqfree p → fnormal ℤ p 
+  → ∀ (bs : list ℤ), I (sqe_cooper p) bs ↔ ∃ (b : ℤ), I p (b :: bs) := sorry
 
 lemma qe_cooper_prsv : 
   ∀ p, fnormal int p → ∀ (bs : list int), I (qe_cooper p) bs ↔ I p bs :=

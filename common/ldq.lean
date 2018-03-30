@@ -2,7 +2,7 @@ import .nnf .dnf
 
 variables {α β : Type}
 
-open atom_type
+open atom_type list
 
 lemma exp_I_list_conj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
 I (list_conj ps) xs = list.all_true (list.map (λ p, I p xs) ps)  
@@ -46,8 +46,8 @@ def qelim (β) [atom_type α β] (qe : list α → fm α) (as : list α) : fm α
        end) as)))
   
 variable (nm : α → Prop)
-      
-lemma qelim_prsv [atom_type α β] {qe} 
+
+lemma qelim_prsv [atom_type α β] {qe : list α → fm α} 
   (hqe : ∀ as, (∀ a ∈ as, (dep0 β a)) → (∀ a ∈ as, normal β a) → qe_prsv β qe as)
   {as : list α} {hr : ∀ a ∈ as, normal β a} (bs : list β) : 
   (I (qelim β qe as) bs) ↔ (∃ b, ∀ a ∈ as, val (b::bs) a) := 
@@ -62,27 +62,31 @@ begin
   rewrite exp_I_list_conj at h2, 
   rewrite map_compose at h2,
   rewrite iff.symm (decr_prsv α β),
-  apply h2, apply list.mem_map_of_mem,
+  apply h2, apply 
+  @list.mem_map_of_mem _ _ (λ (x : α), I (A' decr β x) bs) a _ _, 
   apply mem_filter_of_mem, 
-  apply hd, apply ha, apply hd, 
-  apply h1, apply mem_filter_of_mem,
-  apply hd, apply ha, apply allp_filter_cond,
-  apply allp_filter_of_allp, apply hr,
+  apply ha, apply hd, 
+  apply hd, apply h1, 
+  apply mem_filter_of_mem, apply ha, 
+  apply hd, intro a, apply of_mem_filter,
+  apply forall_mem_filter_of_forall_mem,
+  apply hr,
 
   cases h with b hb, unfold qelim, 
   rewrite exp_I_and_o, apply and.intro, 
   rewrite hqe, existsi b, 
-  apply allp_filter_of_allp, apply hb,
-  apply allp_filter_cond, 
-  apply allp_filter_of_allp, apply hr, 
+  apply forall_mem_filter_of_forall_mem,
+  apply hb, intro a,
+  apply of_mem_filter, 
+  apply forall_mem_filter_of_forall_mem,
+  apply hr, 
   rewrite exp_I_list_conj, intros p hp,
   cases (list.exists_of_mem_map hp) with q hq,
   clear hp, simp at hq, cases hq with hq1 hq2, 
-  subst hq1, cases (list.exists_of_mem_map hq2) with x hx,
-  cases hx with hx1 hx2, simp at hx2, subst hx2, 
-  unfold I, unfold interp, rewrite decr_prsv, 
-  apply hb, apply mem_of_mem_filter, apply hx1, 
-  apply of_mem_filterhx1
+  subst hq2, cases hq1 with a h2, cases h2 with h2 h3,
+  cases h2 with h2 h4, subst h3, 
+  unfold I, unfold interp, rewrite decr_prsv,
+  apply hb _ h2, apply h4
 end
 
 lemma fnormal_conj_of_allp_fnormal [atom_type α β] : 
@@ -209,11 +213,12 @@ lemma ldq_qfree [atom_type α β] (qe : list α → fm α)
   begin
     unfold lift_dnf_qe, apply disj_qfree, 
     unfold qelim, intro l, 
-    apply cases_and_o qfree, trivial, 
-    apply H, apply allp_filter_cond,     
+    apply cases_and_o qfree, trivial, apply H, 
+    unfold allp, intro a, apply of_mem_filter,     
     apply atoms_conj_qfree, 
     unfold qfree, apply and.intro, apply H, 
-    apply allp_filter_cond, apply atoms_conj_qfree 
+    unfold allp, intro a, apply of_mem_filter,   
+    apply atoms_conj_qfree 
   end
 
 -- lemma foo (Q : list β → α → Prop) (a : α) : ∀ (bss : list (list β)), 
@@ -221,20 +226,29 @@ lemma ldq_qfree [atom_type α β] (qe : list α → fm α)
 -- | [] := eq.refl _
 -- | (bs::bss) := by simp 
 
-lemma exp_I_list_disj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
-I (list_disj ps) xs ↔ disj_list (list.map (λ p, I p xs) ps)  
-| [] := iff.refl _ 
+-- lemma exp_I_list_disj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
+-- I (list_disj ps) xs ↔ disj_list (list.map (λ p, I p xs) ps)  
+-- | [] := iff.refl _ 
+-- | (p::ps) := 
+--   begin
+--     simp, unfold list_disj, unfold disj_list,
+--     rewrite (iff.symm (exp_I_list_disj ps)), 
+--     apply exp_I_or_o
+--   end
+
+lemma I_list_disj [atom_type α β] (xs : list β) : 
+  ∀ (ps : list (fm α)), I (list_disj ps) xs ↔ some_true (list.map (λ p, I p xs) ps) 
+| [] := 
+  begin
+    unfold list_disj, unfold map, unfold I, 
+    unfold interp, rewrite some_true_nil
+  end
 | (p::ps) := 
   begin
-    simp, unfold list_disj, unfold disj_list,
-    rewrite (iff.symm (exp_I_list_disj ps)), 
-    apply exp_I_or_o
+    unfold list_disj, rewrite exp_I_or_o, 
+    unfold map, rewrite some_true_cons,
+    rewrite I_list_disj
   end
-
-lemma exp_I_list_disj_alt [atom_type α β] (xs : list β) (ps : list (fm α)) :
-I (list_disj ps) xs ↔ some_true (list.map (λ p, I p xs) ps) := 
-iff.trans (exp_I_list_disj _ _) 
-  (by rewrite some_true_iff_disj_list) 
 
 lemma dist_ex_or (P Q : α → Prop) : (∃ x, (P x ∨ Q x)) ↔ ((∃ x, P x) ∨ (∃ x, Q x)) :=  
 begin
@@ -246,21 +260,35 @@ begin
   cases H with x Hx, existsi x, apply (or.inr Hx)
 end
 
-lemma dist_ex_disj_list [atom_type α β] : ∀ (ps : list (β → Prop)),  
-  (∃ (x : β), disj_list (list.map (λ (p : β → Prop), p x) ps)) 
-  ↔ (disj_list (list.map Exists ps))  
+/-
+lemma ex_some_true [atom_type α β] : ∀ (Ps : list (β → Prop)),  
+  (∃ (x : β), some_true (list.map (λ (P : β → Prop), P x) Ps)) 
+  ↔ (some_true (list.map Exists Ps))  
 | [] :=
   begin 
-    apply iff.intro, intro H, cases H with x Hx, 
-    unfold list.map at Hx, unfold disj_list at Hx, 
-    apply Hx, intro H, cases H
+    apply iff.intro; intro h, cases h with x hx, 
+    cases hx with p hp, unfold map at hp, cases hp^.elim_left,
+    cases h with p hp, unfold map at hp, cases hp^.elim_left,
   end
-| (p::ps) :=  
+| (P::Ps) :=  
   begin 
-    unfold list.map, unfold disj_list,
-    apply iff.trans, apply dist_ex_or,
-    rewrite dist_ex_disj_list
+    unfold map, apply iff.intro; intro h,
+
+    cases h with x hx, cases hx with q hq,
+    cases hq with hm hq, rewrite mem_cons_iff at hm, 
+    cases hm with hm hm, subst hm,
+    constructor, apply and.intro, apply or.inl rfl,
+    existsi x, apply hq, 
+    rewrite (@mem_map _ _ (λ (P : β → Prop), P x) q Ps) at hm,
+    cases hm with Q hQ, cases hQ with hQ1 hQ2, subst hQ2,
+    existsi (Exists Q), apply and.intro,
+    apply mem_cons_of_mem,
+    rewrite @mem_map _ _ Exists,
+    existsi Q; simp, apply hQ1, existsi x, apply hq,
+  
+    
   end
+-/
 
 instance atom_type_to_dec_eq [atom_type α β] : decidable_eq α := atom_type.dec_eq α β 
 
@@ -279,7 +307,7 @@ begin
   subst has2, 
   rewrite (@qelim_prsv α β) at hq2,
   cases hq2 with b hb, existsi b, 
-  rewrite iff.symm dnf_prsv,
+  rewrite iff.symm (dnf_prsv _), 
   existsi (allp (val (b :: bs)) as),
   apply and.intro, 
   apply list.mem_map_of_mem, apply has1, 
@@ -288,17 +316,20 @@ begin
   apply hpn,
   
   apply has1, cases h with b hb, 
-  rewrite iff.symm dnf_prsv at hb, 
+  rewrite iff.symm (dnf_prsv _) at hb, 
   cases hb with q hq, cases hq with hq1 hq2,
   cases (list.exists_of_mem_map hq1) with as has,
   cases has with has1 has2, subst has2, 
   existsi (I (qelim β qe as) bs), 
-  apply and.intro, apply list.mem_map_of_mem,
+  apply and.intro, 
+  apply list.mem_map_of_mem  (λ (x : list α), I (qelim β qe x) bs),
   apply has1, rewrite (@qelim_prsv _ β), 
   existsi b, apply hq2, apply hqep, 
   apply dnf_prsv_normal,
   apply hpn, apply has1, apply hpnq
 end
+
+
 
 meta def ldq_prsv_core_aux := 
 `[repeat {rewrite ldq_prsv_gen}, 
@@ -308,6 +339,8 @@ meta def ldq_prsv_core_aux :=
   intros a ha, 
   apply hp, unfold atoms, 
   apply mem_union_left, apply ha]
+
+
 
 lemma ldq_prsv_gen [atom_type α β] 
   (qe : list α → fm α)  
@@ -347,7 +380,7 @@ lemma ldq_prsv_gen [atom_type α β]
       ↔ ∃ (b : β), I (nnf β (lift_dnf_qe β qe p)) (b :: bs) : 
         begin
           unfold lift_dnf_qe, unfold dnf_to_fm,
-          rewrite exp_I_list_disj_alt,
+          rewrite I_list_disj,
           rewrite map_compose, apply
           (@ldq_prsv_gen_ex α β), apply hqep,
           apply nnf_prsv_normal, apply ldq_normal, 
@@ -361,90 +394,3 @@ lemma ldq_prsv_gen [atom_type α β]
           rewrite ldq_prsv_gen, apply hp,
           apply ldq_qfree, apply hqef
         end 
-
-#exit
-
-
-lemma ldq_prsv [HA : atom_type α β] (qe : list α → fm α)  
-  (H1 : ∀ (l : list α), allp (dep0 β) l → qfree (qe l))
-  (H2 : ∀ (as : list α), allp (dep0 β) as → qe_prsv β qe as) : 
-    ∀ (p : fm α) (xs : list β), I (lift_dnf_qe β qe p) xs ↔ I p xs 
-| (fm.true α) xs := iff.refl _
-| (fm.false α) xs := iff.refl _
-| (fm.atom a) xs := iff.refl _
-| (fm.and p q) xs := 
-  begin
-    unfold lift_dnf_qe, 
-    repeat {rewrite exp_I_and}, 
-    repeat {rewrite ldq_prsv} 
-  end
-| (fm.or p q) xs := 
-  begin
-    unfold lift_dnf_qe, 
-    repeat {rewrite exp_I_or}, 
-    repeat {rewrite ldq_prsv} 
-  end
-| (fm.not p) xs := 
-  begin
-    unfold lift_dnf_qe, 
-    repeat {rewrite exp_I_not}, 
-    rewrite ldq_prsv
-  end
-| (fm.ex p) xs := 
-  begin
-    unfold lift_dnf_qe, rewrite exp_I_ex,  
-    apply iff.symm, 
-    apply @iff.trans _ (∃ x, I (lift_dnf_qe β qe p) (x::xs)),  
-    apply ex_iff_ex, 
-    intro x, rewrite ldq_prsv p (x::xs), 
-    apply @iff.trans _ (∃ x, I (nnf _ (lift_dnf_qe β qe p)) (x::xs)),  
-    apply ex_iff_ex, 
-    intro x, rewrite nnf_prsv, 
-    apply ldq_qfree, apply H1, 
-    apply iff.trans, apply ex_iff_ex, 
-    intro x, apply iff.symm, 
-    apply (dnf_prsv _ _ (x::xs)), 
-    apply nnf_nqfree, apply ldq_qfree, apply H1, 
-    apply iff.trans, apply ex_iff_ex, intro b,
-    rewrite (@foo β α (λ (as : list α) (b : β), ∀ (a : α), a ∈ as → val (b :: xs) a)), 
-    apply iff.trans, apply @dist_ex_disj_list α β _,
-    unfold disj, apply iff.symm,
-    apply iff.trans, apply exp_I_list_disj,
-    apply iff_of_eq, apply (congr_arg disj_list),
-    apply eq.symm, apply eq.trans,
-    apply map_compose, simp, 
-    apply map_eq, 
-    
-    unfold function.comp, 
-    intro as, intro Has, 
-    unfold qelim, rewrite exp_I_and_o, 
-    rewrite H2,  
-    
-    apply propext, apply iff.intro,
-    intro H3, apply and.intro, 
-
-    cases H3 with b Hb, existsi b, 
-    intros a Ha, apply Hb,
-    apply mem_of_mem_filter,
-    apply Ha, rewrite exp_I_list_conj,
-    rewrite map_compose, unfold list.all_true, 
-    intros q Hq, cases (list.exists_of_mem_map Hq) with a Ha,
-    simp at Ha, rewrite Ha^.elim_left, 
-    cases H3 with b Hb, unfold I, unfold interp,
-    rewrite decr_prsv a _ b, apply Hb, 
-    apply mem_of_mem_filter Ha^.elim_right,
-    apply of_mem_filterHa^.elim_right,
-    intro H3, 
-    have Hb := H3^.elim_left,
-    have H4 := H3^.elim_right, clear H3, 
-    cases Hb with b Hb, existsi b, 
-    intros a Ha, 
-    cases (dec_dep0 _ β a) with HD HD,
-    rewrite exp_I_list_conj at H4, simp at H4, 
-    rewrite (iff.symm (decr_prsv a _ b xs)),
-    apply H4, apply list.mem_map_of_mem _ a, 
-    apply mem_filter_of_mem, 
-    apply HD, apply Ha, apply HD, 
-    apply Hb, apply mem_filter_of_mem,
-    apply HD, apply Ha, apply allp_filter_cond,
-  end
