@@ -187,6 +187,18 @@ lemma exp_not_o_nc (p : fm α) :
 (p ≠ ⊤') → (p ≠ ⊥') → (@not_o α p) = ¬' p :=
 by intros H1 H2; cases p; {refl <|> contradiction}  
 
+def list_conj : list (fm α) → fm α 
+| [] := ⊤' 
+| (p::ps) := and_o p $ list_conj ps 
+
+def list_disj : list (fm α) → fm α 
+| [] := ⊥' 
+| (p::ps) := or_o p $ list_disj ps 
+
+def disj (bs : list β) (f : β → fm α) := list_disj (list.map f bs) 
+
+def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj (list.map f ls)
+
 def nfree : fm α → bool
 | ⊤' := tt
 | ⊥' := tt
@@ -214,39 +226,41 @@ def nqfree : fm α → Prop
 | (p ∧' q) := nqfree p ∧ nqfree q
 | (∃' p) := false
 
-def list_conj : list (fm α) → fm α 
-| [] := ⊤' 
-| (p::ps) := and_o p $ list_conj ps 
+lemma qfree_or_o {p q : fm α} : qfree p → qfree q → qfree (or_o p q) := sorry
 
-lemma list_conj_qfree : ∀ (ps : list (fm α)), (∀ p ∈ ps, qfree p) → qfree (list_conj ps)  
+lemma qfree_list_disj (ps : list (fm α)) : (∀ p ∈ ps, qfree p) → qfree (list_disj ps) := 
+begin
+end
+
+lemma qfree_disj (bs : list β) (f : β → fm α) : (∀ b ∈ bs, qfree (f b)) → qfree (disj bs f) := 
+begin
+  intro h, unfold disj, apply qfree_list_disj,
+  intros p hp, rewrite list.mem_map at hp, 
+  cases hp with b hb, cases hb with hb1 hb2,
+  subst hb2, apply h, apply hb1
+end
+
+lemma qfree_list_conj : ∀ (ps : list (fm α)), (∀ p ∈ ps, qfree p) → qfree (list_conj ps)  
 | [] _ := trivial 
 | (p::ps) h := 
   begin 
     unfold list_conj, apply cases_and_o, trivial, 
-    apply h, simp, apply list_conj_qfree,
+    apply h, simp, apply qfree_list_conj,
     intros q Hq, apply h, apply or.inr, apply Hq,
     unfold qfree, apply and.intro, 
-    apply h, simp, apply list_conj_qfree,
+    apply h, simp, apply qfree_list_conj,
     intros q Hq, apply h, apply or.inr, apply Hq
   end
 
-def list_disj : list (fm α) → fm α 
-| [] := ⊥' 
-| (p::ps) := or_o p $ list_disj ps 
-
-def disj (bs : list β) (f : β → fm α) := list_disj (list.map f bs) 
-
-def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj (list.map f ls)
-
-lemma disj_qfree (f : list α → fm α) (H : ∀ l, qfree (f l)) : ∀ (ls : list (list α)), qfree (dnf_to_fm ls f)  
+lemma qfree_dnf_to_fm (f : list α → fm α) (H : ∀ l, qfree (f l)) : ∀ (ls : list (list α)), qfree (dnf_to_fm ls f)  
 | [] := trivial 
 | (l::ls) := 
   begin 
     unfold dnf_to_fm, unfold list.map, unfold list_disj,
     apply cases_or_o qfree _ _ trivial, 
-    apply H, apply disj_qfree, 
+    apply H, apply qfree_dnf_to_fm, 
     unfold qfree, apply and.intro, 
-    apply H, apply disj_qfree 
+    apply H, apply qfree_dnf_to_fm 
   end
 
 /-
@@ -309,7 +323,6 @@ lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β 
 | (p ∨' q) h := by map_fm_prsv_tac
 | (∃' p) h := 
   begin unfold map_fm, unfold atoms, apply list.forall_mem_nil end
-
 
 def interp (h : list β → α → Prop) : list β → fm α → Prop 
 | xs ⊤' := true

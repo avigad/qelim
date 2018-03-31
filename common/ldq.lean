@@ -211,7 +211,7 @@ lemma ldq_qfree [atom_type α β] (qe : list α → fm α)
   by {unfold lift_dnf_qe, apply ldq_qfree}
 | (fm.ex p) := 
   begin
-    unfold lift_dnf_qe, apply disj_qfree, 
+    unfold lift_dnf_qe, apply qfree_dnf_to_fm, 
     unfold qelim, intro l, 
     apply cases_and_o qfree, trivial, apply H, 
     unfold allp, intro a, apply of_mem_filter,     

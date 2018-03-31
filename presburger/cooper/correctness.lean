@@ -1,21 +1,6 @@
-import .correctness ..common.arith
+import .qe
 
 open pbgr
-
-def hd_coeff_one : int → atom → atom 
-| m (atom.le i (0::ks)) := (atom.le i (0::ks))   
-| m (atom.le i (k::ks)) := 
-  let m' := int.div m (abs k) in 
-  atom.le (m' * i) (int.sign k :: list.map (λ x, m' * x) ks)
-| m (atom.dvd d i (0::ks)) := (atom.dvd d i (0::ks)) 
-| m (atom.dvd d i (k::ks)) := 
-  let m' := int.div m k in 
-  atom.dvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
-| m (atom.ndvd d i (0::ks)) := (atom.ndvd d i (0::ks)) 
-| m (atom.ndvd d i (k::ks)) := 
-  let m' := int.div m k in 
-  atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
-| m a := a 
 
 lemma hco_dvd_nonzero (m d i k ks) : 
   k ≠ 0 → 
@@ -36,10 +21,6 @@ begin
   intro hne, cases k with n n, cases n, trivial, 
   trivial, trivial, 
 end
-
-def hd_coeffs_one (p : fm atom) : fm atom := 
-let m := int.zlcms (list.map hd_coeff (atoms_dep0 int p)) in 
-A' (atom.dvd m 0 [1]) ∧' (map_fm (hd_coeff_one m) p)
 
 lemma normal_hco_atom
 (z : int)
@@ -134,50 +115,6 @@ begin
   apply ha, apply haz, refl
 end
 
-def inf_minus : fm atom → fm atom 
-| ⊤' := ⊤' 
-| ⊥' := ⊥' 
-| (A' (atom.le i (k::ks))) := 
-  if k < 0 
-  then ⊤' 
-  else if k > 0
-       then ⊥' 
-       else A' (atom.le i (0::ks))
-| (A' a) := A' a
-| (p ∧' q) := and_o (inf_minus p) (inf_minus q)
-| (p ∨' q) := or_o (inf_minus p) (inf_minus q)
-| (¬' p) := ¬' p
-| (∃' p) := ∃' p
-
-def subst (i ks p) := map_fm (asubst i ks) p
-
-variables {α β : Type}
-
-def get_lb : atom → option (int × list int) 
-| (atom.le i (k::ks)) :=
-  if k > 0 then (i,ks) else none
-| (atom.le _ []) := none
-| (atom.dvd _ _ _) := none
-| (atom.ndvd _ _ _) := none
-
-def list.irange (z : int) : list int :=
-list.map int.of_nat (list.range (int.nat_abs z))
-
-def map_neg [has_neg α] (l : list α) : list α := 
-list.map (λ x, -x) l 
-
-def qe_cooper_one (p : fm atom) : fm atom := 
-  let as := atoms_dep0 int p in 
-  let d := int.zlcms (list.map divisor as) in
-  let lbs := list.omap get_lb as in
-  or_o 
-    (disj (list.irange d) (λ n, subst n [] (inf_minus p))) 
-    (disj lbs 
-      (λ iks, disj (list.irange d) 
-                (λ n, subst (iks^.fst + n) (map_neg iks^.snd) p)))
-
-def sqe_cooper := λ x, qe_cooper_one (hd_coeffs_one x)
-
 lemma qe_cooper_one_normal_prsv : preserves qe_cooper_one (fnormal int) := sorry
 
 lemma sqe_cooper_normal_prsv : preserves sqe_cooper (fnormal int) := 
@@ -188,9 +125,42 @@ begin
   apply hp
 end
 
-lemma qfree_sqe_cooper_of_nqfree : qfree_of_nqfree sqe_cooper := sorry
+meta def nqfree_hco_of_nqfree_tac := 
+`[unfold map_fm, cases h with hp hq, apply and.intro; 
+  apply nqfree_hco_of_nqfree; assumption]
 
-def qe_cooper := lift_nnf_qe int sqe_cooper
+lemma nqfree_hco_of_nqfree (z) : 
+  ∀ (p : fm atom), nqfree p → nqfree (map_fm (hd_coeff_one z) p) 
+| ⊤' h := by unfold map_fm
+| ⊥' h := by unfold map_fm
+| (A' _) h := by unfold map_fm
+| (p ∧' q) h := by nqfree_hco_of_nqfree_tac
+| (p ∨' q) h := by nqfree_hco_of_nqfree_tac
+| (¬' _) h := by cases h
+| (∃' _) h := by unfold map_fm
+
+lemma nqfree_hcso_of_nqfree : 
+  ∀ (p : fm atom), nqfree p → nqfree (hd_coeffs_one p) :=
+begin
+  intros p h, unfold hd_coeffs_one, simp,
+  apply and.intro, trivial, 
+  apply nqfree_hco_of_nqfree _ _ h
+end
+
+lemma qfree_qco_of_nqfree : qfree_of_nqfree qe_cooper_one := 
+begin
+  unfold qfree_of_nqfree, intros p hp,
+  unfold qe_cooper_one, simp,
+  apply qfree_or_o; apply qfree_disj,
+  intros z hz, 
+end
+
+lemma qfree_sqe_cooper_of_nqfree : qfree_of_nqfree sqe_cooper := 
+begin
+  unfold qfree_of_nqfree, unfold sqe_cooper, 
+  intros p h, apply qfree_qco_of_nqfree,
+  apply nqfree_hcso_of_nqfree, apply h
+end
 
 lemma sqe_cooper_prsv :  
   ∀ (p : fm atom), nqfree p → fnormal ℤ p 

@@ -1,4 +1,4 @@
-import .atom ..common.lnq ..common.ldq ..common.predicates 
+import .atom ...common.lnq ...common.ldq ...common.predicates 
 
 variables {α β : Type}
 

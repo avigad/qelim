@@ -136,6 +136,8 @@ begin
   existsi x, apply (H x Hx)
 end
 
+def map_neg [has_neg α] (l : list α) : list α := 
+list.map (λ x, -x) l 
 
 open tactic
 

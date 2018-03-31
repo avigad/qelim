@@ -88,7 +88,7 @@ begin
   cases (list.first (solv0 β) _) with pr,
   apply Hqe, intros x Hx, apply Hl,
   apply mem_of_mem_filter Hx, cases pr with eqn as',
-  apply list_conj_qfree, intros a Ha, 
+  apply qfree_list_conj, intros a Ha, 
   cases (list.exists_of_mem_map Ha) with a' Ha',
   rewrite Ha'^.elim_right, simp 
 end

@@ -10,7 +10,7 @@ def dlo_qe (β : Type) [atom_eq_type adlo β] (as : list adlo) : fm adlo :=
 @ite (adlo.lt 0 0 ∈ as) 
   (@list.decidable_mem adlo (atom_type.dec_eq _ β) (0 <' 0) as) _
   ⊥'
-  (@ite (allp is_b_atm as) 
+  (@ite (list.allp is_b_atm as) 
     (dec_allp _) _ 
     (dlo_qe_aux as)
     (⊥')
@@ -27,7 +27,7 @@ begin
   intros as Has, unfold dlo_qe, 
   apply cases_ite, intro H, trivial, 
   intro HM, apply cases_ite, intro Hlt,
-  unfold dlo_qe_aux, simp, apply list_conj_qfree,
+  unfold dlo_qe_aux, simp, apply qfree_list_conj,
   intros x Hx, 
   cases (list.exists_of_mem_map Hx) with y Hy,
   cases Hy with Hyl Hyr, rewrite Hyr,
