@@ -76,4 +76,8 @@ end
 
 lemma neq_zero_of_gt_zero (z : int) :
   z > 0 → z ≠ 0 := sorry
+
+#check sub_lt_self_iff
 end int
+
+

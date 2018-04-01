@@ -55,6 +55,9 @@ def get_lb : atom → option (int × list int)
 | (atom.dvd _ _ _) := none
 | (atom.ndvd _ _ _) := none
 
+def bnd_points (p) := 
+  list.omap get_lb (atoms_dep0 ℤ p)
+
 def list.irange (z : int) : list int :=
 list.map int.of_nat (list.range (int.nat_abs z))
 

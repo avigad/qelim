@@ -358,6 +358,35 @@ lemma inf_minus_mod :
   (I (inf_minus p) (z :: bs)) ↔ 
   (I (inf_minus p) (int.mod z (divisors_lcm p) :: bs)) := sorry
 
+lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
+∀ (p : fm atom), nqfree p → fnormal ℤ p → unified p 
+  → ∀ k, (has_dvd.dvd (divisors_lcm p) k) 
+    → ¬ I p (z :: zs) → I p ((z + k)::zs)
+    → ∃ (k' : int), ∃ iks ∈ bnd_points p,
+       (0 ≤ k' 
+        ∧ k' < k 
+        ∧ z + k = (k' + (prod.fst iks) + list.dot_prod (map_neg (prod.snd iks)) zs)) := sorry
+
+-- | ⊤' hf hn hu hp hlb := 
+--   begin
+--     exfalso, apply hlb (int.pred lb), 
+--     apply int.pred_self_lt, trivial 
+--   end
+-- | ⊥' hf hn hu hp hlb := 
+--   begin
+--     exfalso, apply hp
+--     -- unfold disj, rewrite I_list_disj, unfold atoms_dep0,
+--     -- unfold atoms, unfold list.filter, unfold list.omap,
+--     -- unfold list.map,
+--   end
+-- | (p ∧' q) hf hn hu hp hlb := 
+--   begin
+-- 
+--   end
+-- | (¬' p) hf hn hu hp hlb := by cases hf
+-- | (∃' p) hf hn hu hp hlb := by cases hf
+
+
 lemma qe_cooper_one_prsv :  
   ∀ (p : fm atom), nqfree p → fnormal ℤ p → unified p
   → ∀ (bs : list ℤ), I (qe_cooper_one p) bs ↔ ∃ (b : ℤ), I p (b :: bs) := 
@@ -416,12 +445,42 @@ begin
   rewrite add_zero, rewrite inf_minus_mod at hx2,
   apply hx2,
   cases h with lb hlb, cases hlb with hlb1 hlb2, 
-  apply or.inr, unfold disj,
+  apply or.inr, 
 
+  have h := 
+    qe_cooper_one_prsv_lb 
+      (lb - divisors_lcm p) bs p hf hn hu (divisors_lcm p)
+      (dvd_refl _) _ _,
+  cases h with k' h, cases h with iks h, cases h with hiks h,
+  cases h with h1 h, cases h with h2 h3,
+  simp at h3, subst h3,
+
+  unfold disj, rewrite I_list_disj, 
+
+  existsi (I (list_disj
+    (list.map (λ (n : ℤ), subst (n + iks.fst) (map_neg (iks.snd)) p)
+       (list.irange (int.zlcms (list.map divisor (atoms_dep0 ℤ p)))))) bs), 
+  
+  apply and.intro, rewrite list.mem_map, 
+  
+  existsi (list_disj
+             (list.map (λ (n : ℤ), subst (n + iks.fst) (map_neg (iks.snd)) p)
+                (list.irange (int.zlcms (list.map divisor (atoms_dep0 ℤ p)))))),
+  apply and.intro, rewrite list.mem_map,
+  existsi iks, apply and.intro, apply hiks, refl, refl,
+  rewrite I_list_disj,
+  existsi (I (subst (k' + iks.fst) (map_neg (iks.snd)) p) bs),
+  apply and.intro, rewrite list.mem_map,
+  existsi (subst (k' + iks.fst) (map_neg (iks.snd)) p),
+  apply and.intro, rewrite list.mem_map,
+  existsi k', apply and.intro, 
+  apply list.mem_irange, apply h1, apply h2, refl, refl,
+  rewrite subst_prsv, simp, apply hlb1,
+  apply hlb2, rewrite sub_lt_self_iff,
+  apply pos_divisors_lcm, 
+  simp, apply hlb1
 end
 
-
-#check get_lb
 lemma hd_coeffs_one_prsv :  
 ∀ (p : fm atom) (hf : nqfree p) (hn : fnormal ℤ p) (bs : list ℤ),
 (∃ (b : ℤ), I (hd_coeffs_one p) (b :: bs)) ↔ ∃ (b : ℤ), I p (b :: bs) :=
