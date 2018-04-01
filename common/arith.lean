@@ -62,4 +62,18 @@ lemma zlcms_neq_zero : ∀ {zs : list int} {hzs : ∀ (z : int), z ∈ zs → z 
     apply list.forall_mem_of_forall_mem_cons h
   end
 
+  lemma eq_zero_of_not_gt_zero_of_not_lt_zero (z : int) :
+  (¬ z < 0) → (¬ z > 0) → z = 0 := sorry
+
+lemma sign_split (z) : 
+  sign z = -1 ∨ sign z = 0 ∨ sign z = 1 :=
+begin
+  cases z with n n, cases n,
+  apply or.inr (or.inl rfl),
+  apply or.inr (or.inr rfl),
+  apply or.inl rfl
+end
+
+lemma neq_zero_of_gt_zero (z : int) :
+  z > 0 → z ≠ 0 := sorry
 end int

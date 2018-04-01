@@ -27,6 +27,8 @@ I (list_conj ps) xs = list.all_true (list.map (λ p, I p xs) ps)
     apply H, apply or.inr, apply Hq 
   end
 
+  #check @disj
+
 def qe_prsv (β : Type) [atom_type α β] (qe : list α → fm α) (as : list α) : Prop := 
   ∀ (bs : list β), ((I (qe as) bs) ↔ (∃ x, ∀ a ∈ as, (val (x::bs) a)))
 
@@ -220,21 +222,6 @@ lemma ldq_qfree [atom_type α β] (qe : list α → fm α)
     unfold allp, intro a, apply of_mem_filter,   
     apply atoms_conj_qfree 
   end
-
--- lemma foo (Q : list β → α → Prop) (a : α) : ∀ (bss : list (list β)), 
-  -- list.map (λ bs, Q bs a) bss = list.map (λ (P : α → Prop), P a) (list.map Q bss)  
--- | [] := eq.refl _
--- | (bs::bss) := by simp 
-
--- lemma exp_I_list_disj [atom_type α β] (xs : list β) : ∀ (ps : list (fm α)),
--- I (list_disj ps) xs ↔ disj_list (list.map (λ p, I p xs) ps)  
--- | [] := iff.refl _ 
--- | (p::ps) := 
---   begin
---     simp, unfold list_disj, unfold disj_list,
---     rewrite (iff.symm (exp_I_list_disj ps)), 
---     apply exp_I_or_o
---   end
 
 lemma I_list_disj [atom_type α β] (xs : list β) : 
   ∀ (ps : list (fm α)), I (list_disj ps) xs ↔ some_true (list.map (λ p, I p xs) ps) 

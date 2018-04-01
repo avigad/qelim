@@ -4,7 +4,7 @@ variables {α β : Type}
 
 namespace pbgr
 
-lemma fnormal_down_closed : @down_closed (pbgr.atom) (fnormal int)  
+lemma down_closed_fnormal : @down_closed (pbgr.atom) (fnormal int)  
 | ⊤' _ hd _ := by cases hd
 | ⊥' _ hd _ := by cases hd
 | (A' a) _ hd _ := by cases hd
@@ -14,6 +14,27 @@ lemma fnormal_down_closed : @down_closed (pbgr.atom) (fnormal int)
   by {unfold fnormal at hn, cases hn, cases hd; assumption}
 | (¬' p) r hd hn := by {cases hd, apply hn}
 | (∃' p) r hd hn := by {cases hd, apply hn}
+
+lemma prop_up_closed_fnormal : @prop_up_closed (pbgr.atom) (fnormal int) 
+| ⊤' := trivial
+| ⊥' := trivial
+| (A' a) := trivial
+| (p ∧' q) := begin intros hp hq, apply and.intro hp hq end
+| (p ∨' q) := begin intros hp hq, apply and.intro hp hq end
+| (¬' p) := id
+| (∃' p) := trivial
+
+lemma fnormal_and_o : ∀ (p q : fm atom), fnormal int p → fnormal int q → fnormal int (and_o p q)
+ := pred_and_o (fnormal int) prop_up_closed_fnormal
+
+lemma fnormal_or_o : ∀ (p q : fm atom), fnormal int p → fnormal int q → fnormal int (or_o p q)
+ := pred_or_o (fnormal int) prop_up_closed_fnormal
+
+lemma fnormal_list_disj : ∀ (ps : list (fm atom)), (∀ p ∈ ps, fnormal int p) → fnormal int (list_disj ps) :=
+pred_list_disj _ prop_up_closed_fnormal
+
+lemma fnormal_disj : ∀ (bs : list β) (f : β → fm atom), (∀ b ∈ bs, fnormal int (f b)) → fnormal int (disj bs f) := 
+pred_disj _ prop_up_closed_fnormal
 
 meta def nnf_closed_fnormal_aux := 
 `[unfold nnf, unfold fnormal,
@@ -93,11 +114,11 @@ lemma lnq_closed_fnormal (f : fm atom → fm atom)
 theorem lnq_prsv 
   (qe : fm pbgr.atom → fm pbgr.atom) 
   (hqe : preserves qe (fnormal int))
-  (hqf : qfree_of_nqfree qe)
+  (hqf : qfree_res_of_nqfree_arg qe)
   (hi : ∀ p, nqfree p → fnormal int p → ∀ (bs : list int), I (qe p) bs ↔ ∃ b, (I p (b::bs))) : 
 ∀ p, fnormal int p → ∀ (bs : list int), I (lift_nnf_qe int qe p) bs ↔ I p bs :=
 @lnq_prsv_gen pbgr.atom int pbgr.atom_type 
-  qe hqf (fnormal int) fnormal_down_closed hqe 
+  qe hqf (fnormal int) down_closed_fnormal hqe 
   nnf_closed_fnormal lnq_closed_fnormal hi 
 
 theorem ldq_prsv 

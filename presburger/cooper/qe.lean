@@ -17,10 +17,17 @@ def hd_coeff_one : int → atom → atom
   atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
 | m a := a 
 
+def coeffs_lcm (p) := 
+  int.zlcms (list.map hd_coeff (atoms_dep0 int p))
+
+def divisors_lcm (p) := 
+  int.zlcms (list.map divisor (atoms_dep0 ℤ p))
+
 def hd_coeffs_one (p : fm atom) : fm atom := 
 let m := int.zlcms (list.map hd_coeff (atoms_dep0 int p)) in 
 A' (atom.dvd m 0 [1]) ∧' (map_fm (hd_coeff_one m) p)
 
+-- Assumes : nfree arg 
 def inf_minus : fm atom → fm atom 
 | ⊤' := ⊤' 
 | ⊥' := ⊥' 
@@ -38,6 +45,9 @@ def inf_minus : fm atom → fm atom
 
 def subst (i ks p) := map_fm (asubst i ks) p
 
+lemma subst_prsv (i ks xs) : 
+  ∀ p, I (subst i ks p) xs ↔ I p ((i + list.dot_prod ks xs)::xs) := sorry 
+
 def get_lb : atom → option (int × list int) 
 | (atom.le i (k::ks)) :=
   if k > 0 then (i,ks) else none
@@ -47,6 +57,8 @@ def get_lb : atom → option (int × list int)
 
 def list.irange (z : int) : list int :=
 list.map int.of_nat (list.range (int.nat_abs z))
+
+lemma list.mem_irange (z y) : 0 ≤ z → z < y → z ∈ list.irange y := sorry
 
 def qe_cooper_one (p : fm atom) : fm atom := 
   let as := atoms_dep0 int p in 

@@ -199,14 +199,14 @@ def disj (bs : list β) (f : β → fm α) := list_disj (list.map f bs)
 
 def dnf_to_fm (ls : list (list α)) (f : list α → fm α) := list_disj (list.map f ls)
 
-def nfree : fm α → bool
-| ⊤' := tt
-| ⊥' := tt
-| A' a := tt
-| (¬' p) := ff
-| (p ∨' q) := nfree p && nfree q
-| (p ∧' q) := nfree p && nfree q
-| (∃' p) := nfree p
+-- def nfree : fm α → bool
+-- | ⊤' := tt
+-- | ⊥' := tt
+-- | A' a := tt
+-- | (¬' p) := ff
+-- | (p ∨' q) := nfree p && nfree q
+-- | (p ∧' q) := nfree p && nfree q
+-- | (∃' p) := nfree p
 
 def qfree : fm α → Prop
 | ⊤' := true
@@ -226,19 +226,126 @@ def nqfree : fm α → Prop
 | (p ∧' q) := nqfree p ∧ nqfree q
 | (∃' p) := false
 
-lemma qfree_or_o {p q : fm α} : qfree p → qfree q → qfree (or_o p q) := sorry
+lemma qfree_of_nqfree : ∀ (p : fm α), nqfree p → qfree p 
+| ⊤' _ := trivial
+| ⊥' _ := trivial
+| (A' a) _ := trivial
+| (¬' p) h := by cases h
+| (p ∨' q) h := 
+  begin
+    cases h with hp hq, apply and.intro; 
+    apply qfree_of_nqfree; assumption
+  end
+| (p ∧' q) h := 
+  begin
+    cases h with hp hq, apply and.intro; 
+    apply qfree_of_nqfree; assumption
+  end
+| (∃' p) h := by cases h
 
-lemma qfree_list_disj (ps : list (fm α)) : (∀ p ∈ ps, qfree p) → qfree (list_disj ps) := 
+inductive down : fm α → fm α → Prop 
+| andl : ∀ p q, down (p ∧' q) p
+| andr : ∀ p q, down (p ∧' q) q
+| orl  : ∀ p q, down (p ∨' q) p
+| orr  : ∀ p q, down (p ∨' q) q
+| not  : ∀ p, down (¬' p) p
+| ex   : ∀ p, down (∃' p) p
+
+def down_closed (P : fm α → Prop) : Prop := 
+∀ (p q : fm α), down p q → P p → P q
+
+def of_subformulas (P : fm α → Prop) : fm α → Prop 
+| ⊤' := P ⊤' 
+| ⊥' := P ⊥'
+| (A' a) := true
+| (p ∧' q) := P p → P q → P (p ∧' q)
+| (p ∨' q) := P p → P q → P (p ∨' q)
+| (¬' p) := P p → P (¬' p)
+| (∃' p) := P p → P (∃' p)
+
+def of_prop_subformulas (P : fm α → Prop) : fm α → Prop 
+| ⊤' := P ⊤' 
+| ⊥' := P ⊥'
+| (A' a) := true
+| (p ∧' q) := P p → P q → P (p ∧' q)
+| (p ∨' q) := P p → P q → P (p ∨' q)
+| (¬' p) := P p → P (¬' p)
+| (∃' p) := true
+
+def up_closed (P : fm α → Prop) : Prop := 
+∀ (p : fm α), of_subformulas P p
+
+def prop_up_closed (P : fm α → Prop) : Prop := 
+∀ (p : fm α), of_prop_subformulas P p
+
+lemma pred_and_o (P : fm α → Prop) (hup : prop_up_closed P) :
+  ∀ (p q : fm α), P p → P q → P (and_o p q) := 
 begin
+  intros p q hp hq, apply cases_and_o; 
+  try {apply hup ⊥' <|> assumption}, 
+  apply hup (p ∧' q); assumption
 end
 
-lemma qfree_disj (bs : list β) (f : β → fm α) : (∀ b ∈ bs, qfree (f b)) → qfree (disj bs f) := 
+lemma pred_or_o (P : fm α → Prop) (hup : prop_up_closed P) :
+  ∀ (p q : fm α), P p → P q → P (or_o p q) := 
 begin
-  intro h, unfold disj, apply qfree_list_disj,
+  intros p q hp hq, apply cases_or_o; 
+  try {apply hup ⊤' <|> assumption}, 
+  apply hup (p ∨' q); assumption
+end
+
+lemma pred_list_disj (P : fm α → Prop) (hup : prop_up_closed P) : 
+  ∀ (ps : list (fm α)), (∀ p ∈ ps, P p) → P (list_disj ps) 
+| [] h := hup ⊥'
+| (p::ps) h := 
+  begin
+    unfold list_disj, apply pred_or_o _ hup,
+    apply h, apply or.inl rfl, 
+    apply pred_list_disj,
+    apply list.forall_mem_of_forall_mem_cons h
+  end
+
+lemma pred_disj  (P : fm α → Prop) (hup : prop_up_closed P) 
+  (bs : list β) (f : β → fm α) : (∀ b ∈ bs, P (f b)) → P (disj bs f) := 
+begin
+  intro h, unfold disj, apply pred_list_disj _ hup,
   intros p hp, rewrite list.mem_map at hp, 
   cases hp with b hb, cases hb with hb1 hb2,
   subst hb2, apply h, apply hb1
 end
+
+lemma down_closed_qfree : @down_closed α qfree 
+| ⊤' _ hd _ := by cases hd
+| ⊥' _ hd _ := by cases hd
+| (A' a) _ hd _ := by cases hd
+| (p ∧' q) r hd hn := 
+  begin cases hn with hnp hnq, cases hd; assumption end
+| (p ∨' q) r hd hn := 
+  begin cases hn with hnp hnq, cases hd; assumption end
+  -- by {unfold fnormal at hn, cases hn, cases hd; assumption}
+| (¬' p) r hd hn := begin cases hd, apply hn end
+| (∃' p) r hd hn := by cases hn
+
+lemma prop_up_closed_qfree : @prop_up_closed α qfree 
+| ⊤' := trivial
+| ⊥' := trivial
+| (A' a) := trivial
+| (p ∧' q) := begin intros hp hq, apply and.intro hp hq end
+| (p ∨' q) := begin intros hp hq, apply and.intro hp hq end
+| (¬' p) := id
+| (∃' p) := trivial
+
+lemma qfree_and_o : ∀ {p q : fm α}, qfree p → qfree q → qfree (and_o p q) := 
+pred_and_o _ prop_up_closed_qfree
+
+lemma qfree_or_o : ∀ {p q : fm α}, qfree p → qfree q → qfree (or_o p q) := 
+pred_or_o _ prop_up_closed_qfree
+
+lemma qfree_list_disj : ∀ (ps : list (fm α)), (∀ p ∈ ps, qfree p) → qfree (list_disj ps) :=
+pred_list_disj _ prop_up_closed_qfree
+
+lemma qfree_disj : ∀ (bs : list β) (f : β → fm α), (∀ b ∈ bs, qfree (f b)) → qfree (disj bs f) := 
+pred_disj _ prop_up_closed_qfree
 
 lemma qfree_list_conj : ∀ (ps : list (fm α)), (∀ p ∈ ps, qfree p) → qfree (list_conj ps)  
 | [] _ := trivial 
@@ -287,7 +394,6 @@ def amap (f : α → fm β) : fm α → fm β
 | (p ∧' q) := and_o (amap p) (amap q)
 | (∃' p) := ⊥' 
 
-
 def atoms [decidable_eq α] : fm α → list α 
 | ⊤' := [] 
 | ⊥' := [] 
@@ -323,6 +429,10 @@ lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β 
 | (p ∨' q) h := by map_fm_prsv_tac
 | (∃' p) h := 
   begin unfold map_fm, unfold atoms, apply list.forall_mem_nil end
+
+lemma atoms_map_fm [decidable_eq α] [decidable_eq β] 
+(f : α → β) (p : fm α) : 
+  atoms (map_fm f p) = list.map f (atoms p) := sorry
 
 def interp (h : list β → α → Prop) : list β → fm α → Prop 
 | xs ⊤' := true
