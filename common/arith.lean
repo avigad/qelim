@@ -77,6 +77,8 @@ end
 lemma neq_zero_of_gt_zero (z : int) :
   z > 0 → z ≠ 0 := sorry
 
+lemma lt_add_of_pos (k z : int) : 0 < k → z < z + k := sorry
+
 #check sub_lt_self_iff
 end int
 
