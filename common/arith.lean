@@ -79,7 +79,16 @@ lemma neq_zero_of_gt_zero (z : int) :
 
 lemma lt_add_of_pos (k z : int) : 0 < k → z < z + k := sorry
 
-#check sub_lt_self_iff
+
+lemma abs_neq_zero_of_neq_zero {z : int} (h : z ≠ 0) : abs z ≠ 0 :=
+begin
+  intro hc, apply h, apply eq_zero_of_abs_eq_zero, apply hc
+end
+
+lemma sign_eq_abs_div (a : ℤ) : sign a = (abs a) / a := sorry
+
+lemma sign_self_mul (z : int) : int.sign z * z = abs z := sorry
+
 end int
 
 

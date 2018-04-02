@@ -621,4 +621,7 @@ lemma allp_iff_forall_mem (P : α → Prop) (as : list α) :
   (allp P as) ↔ (∀ a ∈ as, P a) :=
 by unfold allp
 
+
+lemma map_one_mul [monoid α] (l : list α) : map (has_mul.mul (1 : α)) l = l := sorry
+
 end list
