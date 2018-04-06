@@ -64,7 +64,7 @@ theorem gcd_neq_zero : ∀ (m n : nat), m ≠ 0 → n ≠ 0 → (nat.gcd m n) �
     rewrite (classical.by_contradiction h), intro hc, cases hc 
   end
 
-lemma lcm_neq_zero (m n : nat) : m ≠ 0 → n ≠ 0 → (nat.lcm m n) ≠ 0 :=
+lemma lcm_nonzero (m n : nat) : m ≠ 0 → n ≠ 0 → (nat.lcm m n) ≠ 0 :=
 begin
   intros hm hn hc,
   have h := nat.gcd_mul_lcm m n,

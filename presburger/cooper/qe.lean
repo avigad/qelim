@@ -18,10 +18,10 @@ def hd_coeff_one : int → atom → atom
 | m a := a 
 
 def coeffs_lcm (p) := 
-  int.zlcms (list.map hd_coeff (atoms_dep0 int p))
+  int.lcms (list.map hd_coeff (atoms_dep0 int p))
 
 def divisors_lcm (p) := 
-  int.zlcms (list.map divisor (atoms_dep0 ℤ p))
+  int.lcms (list.map divisor (atoms_dep0 ℤ p))
 
 def hd_coeffs_one (p : fm atom) : fm atom := 
 A' (atom.dvd (coeffs_lcm p) 0 [1]) ∧' (map_fm (hd_coeff_one (coeffs_lcm p)) p)
@@ -64,7 +64,7 @@ lemma list.mem_irange (z y) : 0 ≤ z → z < y → z ∈ list.irange y := sorry
 
 def qe_cooper_one (p : fm atom) : fm atom := 
   let as := atoms_dep0 int p in 
-  let d := int.zlcms (list.map divisor as) in
+  let d := int.lcms (list.map divisor as) in
   let lbs := list.omap get_lb as in
   or_o 
     (disj (list.irange d) (λ n, subst n [] (inf_minus p))) 

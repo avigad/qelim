@@ -17,7 +17,7 @@ lemma cons_zip_pad_cons {a b a' b'} {as : list α} {bs : list β} :
   zip_pad a' b' (a::as) (b::bs) = (a,b)::(zip_pad a' b' as bs) :=
 begin unfold zip_pad end
 
-def map_mul [has_mul α] (a) (as : list α) : list α :=
+@[simp] def map_mul [has_mul α] (a) (as : list α) : list α :=
 list.map (λ x, a * x) as
 
 def comp_add [has_zero α] [has_add α] (as1 as2 : list α) : list α := 
@@ -26,7 +26,7 @@ list.map (λ xy, prod.fst xy + prod.snd xy) (list.zip_pad 0 0 as1 as2)
 def dot_prod [has_zero α] [has_add α] [has_mul α] (as1 as2 : list α) : α := 
 list.sum (list.map (λ xy, prod.fst xy * prod.snd xy) (list.zip_pad 0 0 as1 as2))
 
-lemma nil_dot_prod [semiring α] :
+@[simp] lemma nil_dot_prod [semiring α] :
   ∀ (as : list α), dot_prod [] as = 0  
 | [] := 
   begin
@@ -38,7 +38,7 @@ lemma nil_dot_prod [semiring α] :
     simp, apply nil_dot_prod
   end
 
-lemma dot_prod_nil [semiring α] :
+@[simp] lemma dot_prod_nil [semiring α] :
   ∀ (as : list α), dot_prod as [] = 0  
 | [] := 
   begin
@@ -50,7 +50,7 @@ lemma dot_prod_nil [semiring α] :
     simp, apply dot_prod_nil
   end
 
-lemma cons_dot_prod_cons [semiring α] (a1 a2 : α) (as1 as2 : list α) : 
+@[simp] lemma cons_dot_prod_cons [semiring α] (a1 a2 : α) (as1 as2 : list α) : 
 dot_prod (a1::as1) (a2::as2) = (a1 * a2) + dot_prod as1 as2 := 
 begin unfold dot_prod, rewrite cons_zip_pad_cons, simp end
 
@@ -106,8 +106,7 @@ lemma map_mul_dot_prod [semiring α] (a : α) :
 | [] as2 := 
   begin
     unfold map_mul, simp,
-    repeat {rewrite nil_dot_prod}, 
-    rewrite mul_zero,
+    repeat {rewrite nil_dot_prod}
   end
 | as1 [] := 
   begin
@@ -121,12 +120,16 @@ lemma map_mul_dot_prod [semiring α] (a : α) :
     rewrite h, rewrite mul_add, simp, rewrite mul_assoc
   end
 
+@[simp] lemma mul_dot_prod [semiring α] {a : α} {as1 as2} :
+   a * (dot_prod as1 as2) = dot_prod (map_mul a as1) as2 :=
+by rewrite map_mul_dot_prod  
+
 def neg_dot_prod [ring α] : ∀ (as1 as2 : list α),  
   dot_prod (list.map (λ x, -x) as1) as2 = -(dot_prod as1 as2) := 
 begin
   intros as1 as2,
-  have h := map_mul_dot_prod (-(1:α)) as1 as2, 
-  unfold map_mul at h, simp at h, simp, apply h
+  rewrite eq.symm (one_mul (dot_prod as1 as2)),
+  rewrite neg_mul_eq_neg_mul, simp
 end
 
 /- omap -/
@@ -598,16 +601,6 @@ meta def first_arg (f : α → tactic β) : list α → tactic β
 | [] := tactic.failed 
 | (a::as) := f a <|> (first_arg as)
 
--- lemma allp_filter_cond (P : α → Prop) [H : decidable_pred P] : ∀ (l : list α) , allp P (list.filter P l) 
--- | [] := begin intros _ Ha, cases Ha end 
--- | (x::xs) := 
---   begin 
---     unfold list.filter, unfold ite, 
---     cases (H x) with H1 H1, simp, apply allp_filter_cond, 
---     simp, intros a Ha, cases Ha with H2 H3, rewrite H2,
---     apply H1, apply allp_filter_cond, apply H3
---   end
--- 
 lemma forall_mem_filter_of_forall_mem {P Q : α → Prop} [H : decidable_pred Q] 
   {as : list α} (h : ∀ a ∈ as, P a) : ∀ a ∈ (list.filter Q as), P a := 
 begin
