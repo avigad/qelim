@@ -33,22 +33,43 @@ begin
   rewrite int.nat_abs_dvd, rewrite int.dvd_nat_abs
 end
 
-def zlcms (zs : list int) : int :=
-int.of_nat $ nat.lcms (list.map int.nat_abs zs)
+def lcm (x y : int) : int :=
+int.of_nat (nat.lcm (nat_abs x) (nat_abs y))
 
-lemma dvd_zlcms {z : int} (hz : z ≠ 0) : ∀ {zs : list int}, z ∈ zs → has_dvd.dvd z (zlcms zs) 
+def lcms : list int → int
+| [] := 1 
+| (z::zs) := lcm z (lcms zs)
+
+lemma dvd_lcm_left : ∀ (x y : int), has_dvd.dvd x (lcm x y) := sorry
+
+lemma dvd_lcm_right : ∀ (x y : int), has_dvd.dvd y (lcm x y) := sorry
+
+lemma dvd_lcms {x : int} (hz : x ≠ 0) : ∀ {zs : list int}, x ∈ zs → has_dvd.dvd x (lcms zs) 
 | [] hm := by cases hm
-| (z'::zs) hm := 
+| (z::zs) hm := 
   begin
-    unfold zlcms, unfold list.map, unfold nat.lcms,
-    rewrite dvd_iff_nat_abs_dvd_nat_abs, simp,
-    rewrite list.mem_cons_iff at hm, cases hm with hm hm,
-    subst hm, apply nat.dvd_lcm_left,
-    apply dvd.trans _ (nat.dvd_lcm_right _ _),
-    have h := dvd_zlcms hm, unfold zlcms at h,
-    rewrite iff.symm int.coe_nat_dvd,
-    rewrite nat_abs_dvd, apply h
-  end 
+    unfold lcms, rewrite list.mem_cons_iff at hm,
+    cases hm with hm hm, subst hm,
+    apply dvd_lcm_left, 
+    apply dvd_trans, apply @dvd_lcms zs hm,
+    apply dvd_lcm_right, 
+  end
+
+#exit
+
+-- lemma dvd_zlcms {z : int} (hz : z ≠ 0) : ∀ {zs : list int}, z ∈ zs → has_dvd.dvd z (zlcms zs) 
+-- | [] hm := by cases hm
+-- | (z'::zs) hm := 
+--   begin
+--     unfold zlcms, unfold list.map, unfold nat.lcms,
+--     rewrite dvd_iff_nat_abs_dvd_nat_abs, simp,
+--     rewrite list.mem_cons_iff at hm, cases hm with hm hm,
+--     subst hm, apply nat.dvd_lcm_left,
+--     apply dvd.trans _ (nat.dvd_lcm_right _ _),
+--     have h := dvd_zlcms hm, unfold zlcms at h,
+--     rewrite iff.symm int.coe_nat_dvd,
+--     rewrite nat_abs_dvd, apply h
+--   end 
 
 lemma zlcms_neq_zero : ∀ {zs : list int} {hzs : ∀ (z : int), z ∈ zs → z ≠ 0}, zlcms zs ≠ 0
 | [] _ := begin intro hc, cases hc end
@@ -85,9 +106,22 @@ begin
   intro hc, apply h, apply eq_zero_of_abs_eq_zero, apply hc
 end
 
+lemma sign_neq_zero_of_neq_zero {z : int} (h : z ≠ 0) : sign z ≠ 0 :=
+begin
+ 
+end
+
+
+
 lemma sign_eq_abs_div (a : ℤ) : sign a = (abs a) / a := sorry
 
+lemma div_abs_self (z) : has_div.div z (abs z) = sign z := sorry
+
 lemma sign_self_mul (z : int) : int.sign z * z = abs z := sorry
+
+lemma div_mul_comm (x y z : int) : has_dvd.dvd y x → (x / y) * z = x * z / y := sorry
+
+lemma abs_dvd (x y : int) : has_dvd.dvd (abs x) y ↔ has_dvd.dvd x y := sorry
 
 end int
 

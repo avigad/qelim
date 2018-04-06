@@ -90,6 +90,14 @@ by unfold I; unfold interp
 lemma exp_I_bot [atom_type α β] (xs) : @I α β _ ⊥' xs = false := 
 by unfold I; unfold interp
 
+lemma I_not_dep0 [atom_type α β] (a : α) (b : β) (bs : list β) :
+  ¬ atom_type.dep0 β a 
+  → (I (A' a) (b::bs) ↔ I (A' (atom_type.decr β a)) bs) :=
+begin
+  intro h, unfold I, unfold interp,
+  rewrite atom_type.decr_prsv, apply h
+end
+
 def fnormal_alt (β) [atom_type α β] (p : fm α) := 
   ∀ a ∈ (@atoms _ (atom_type.dec_eq _ β) p), atom_type.normal β a
 

@@ -17,14 +17,6 @@ notation p `∧'` q := fm.and p q
 notation p `∨'` q := fm.or p q 
 notation `∃'` p   := fm.ex p
 
--- | (fm.true α) := 
--- | (fm.false α) := 
--- | (fm.atom a) :=  
--- | (fm.and p q) :=
--- | (fm.or p q) :=
--- | (fm.not p) :=
--- | (fm.ex p) :=
-
 -- | ⊤' := sorry
 -- | ⊥' := sorry
 -- | (A' a) := sorry
