@@ -104,6 +104,14 @@ def divisor : atom → int
 | (dvd d i ks)  := d 
 | (ndvd d i ks) := d 
 
+lemma normal_iff_divisor_nonzero {a : atom} :
+  normal a ↔ divisor a ≠ 0 :=
+begin
+  cases a with i ks d i ks d i ks,
+  apply true_iff_true, trivial, 
+  intro hc, cases hc, refl, refl
+end
+
 def dec_normal : decidable_pred normal  
 | (le i ks)     := decidable.is_true trivial
 | (dvd d i ks)  := by apply dec_not_pred_of_dec_pred

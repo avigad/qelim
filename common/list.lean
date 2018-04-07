@@ -132,69 +132,68 @@ begin
   rewrite neg_mul_eq_neg_mul, simp
 end
 
-/- omap -/
 
-def omap (f : α → option β) : list α → list β  
-| [] := []
-| (a::as) := 
-  match f a with 
-  | none := omap as 
-  | (some b) := b::(omap as) 
-  end
 
-lemma mem_omap {f : α → option β} {a} {b} (he : f a = some b) : 
-  ∀ {as : list α} (HM : a ∈ as), b ∈ omap f as  
-| [] hm := by cases hm
-| (a'::as) hm :=
-  begin 
-    unfold has_mem.mem at hm, unfold list.mem at hm,
-    cases hm with hm hm, subst hm,
-    unfold omap, rewrite he, apply or.inl rfl,
-    unfold omap, cases (f a'), 
-    apply mem_omap, apply hm, 
-    apply or.inr, apply mem_omap, apply hm 
-  end 
-
-lemma mem_omap_of_mem_omap_tail {f : α → option β} {a} {b} :
-  ∀ {as : list α}, b ∈ omap f as → b ∈ omap f (a::as) := 
-begin
-  intros as h, unfold omap, cases (f a),
-  apply h, apply or.inr h
-end
-
-lemma exp_mem_omap {f : α → option β} {b : β} : ∀ {as : list α}, (b ∈ omap f as) ↔ ∃ a, a ∈ as ∧ some b = f a 
-| [] := 
-  iff.intro 
-    (by {intro h, cases h}) 
-    (begin intro h, cases h with a ha, cases ha^.elim_left end)
-| (a::as) := 
- iff.intro 
- (begin
-    intro h, unfold omap at h, 
-    cases (dest_option (f a)) with ho ho, 
-    rewrite ho at h, 
-    cases (exp_mem_omap^.elim_left h) with a' ha', 
-    cases ha' with ha1' ha2',
-    existsi a', apply and.intro (or.inr ha1') ha2',
-    cases ho with b' hb', rewrite hb' at h,
-    unfold omap at h, rewrite mem_cons_iff at h,
-    cases h with h h, existsi a,
-    apply and.intro (or.inl rfl), rewrite h,
-    apply eq.symm hb',
-    cases (exp_mem_omap^.elim_left h) with a' ha', 
-    cases ha' with ha1' ha2',
-    existsi a', apply and.intro (or.inr ha1') ha2'
-  end)
- (begin 
-   intro h, cases h with a' ha', 
-   cases ha' with h1 h2, rewrite mem_cons_iff at h1, 
-   cases h1 with h1 h1, 
-   unfold omap, subst h1, rewrite eq.symm h2, 
-   apply or.inl rfl, apply mem_omap_of_mem_omap_tail,
-   apply exp_mem_omap^.elim_right, existsi a',
-   apply and.intro h1 h2
-  end)
-  
+--def omap (f : α → option β) : list α → list β  
+--| [] := []
+--| (a::as) := 
+--  match f a with 
+--  | none := omap as 
+--  | (some b) := b::(omap as) 
+--  end
+--
+--lemma mem_omap {f : α → option β} {a} {b} (he : f a = some b) : 
+--  ∀ {as : list α} (HM : a ∈ as), b ∈ omap f as  
+--| [] hm := by cases hm
+--| (a'::as) hm :=
+--  begin 
+--    unfold has_mem.mem at hm, unfold list.mem at hm,
+--    cases hm with hm hm, subst hm,
+--    unfold omap, rewrite he, apply or.inl rfl,
+--    unfold omap, cases (f a'), 
+--    apply mem_omap, apply hm, 
+--    apply or.inr, apply mem_omap, apply hm 
+--  end 
+--
+--lemma mem_omap_of_mem_omap_tail {f : α → option β} {a} {b} :
+--  ∀ {as : list α}, b ∈ omap f as → b ∈ omap f (a::as) := 
+--begin
+--  intros as h, unfold omap, cases (f a),
+--  apply h, apply or.inr h
+--end
+--
+--lemma exp_mem_omap {f : α → option β} {b : β} : ∀ {as : list α}, (b ∈ omap f as) ↔ ∃ a, a ∈ as ∧ some b = f a 
+--| [] := 
+--  iff.intro 
+--    (by {intro h, cases h}) 
+--    (begin intro h, cases h with a ha, cases ha^.elim_left end)
+--| (a::as) := 
+-- iff.intro 
+-- (begin
+--    intro h, unfold omap at h, 
+--    cases (dest_option (f a)) with ho ho, 
+--    rewrite ho at h, 
+--    cases (exp_mem_omap^.elim_left h) with a' ha', 
+--    cases ha' with ha1' ha2',
+--    existsi a', apply and.intro (or.inr ha1') ha2',
+--    cases ho with b' hb', rewrite hb' at h,
+--    unfold omap at h, rewrite mem_cons_iff at h,
+--    cases h with h h, existsi a,
+--    apply and.intro (or.inl rfl), rewrite h,
+--    apply eq.symm hb',
+--    cases (exp_mem_omap^.elim_left h) with a' ha', 
+--    cases ha' with ha1' ha2',
+--    existsi a', apply and.intro (or.inr ha1') ha2'
+--  end)
+-- (begin 
+--   intro h, cases h with a' ha', 
+--   cases ha' with h1 h2, rewrite mem_cons_iff at h1, 
+--   cases h1 with h1 h1, 
+--   unfold omap, subst h1, rewrite eq.symm h2, 
+--   apply or.inl rfl, apply mem_omap_of_mem_omap_tail,
+--   apply exp_mem_omap^.elim_right, existsi a',
+--   apply and.intro h1 h2
+--  end)
 
 lemma exists_maximum [linear_order β] : 
 ∀ (bs : list β) (hi : bs ≠ []), ∃ b, b ∈ bs ∧ ∀ b' ∈ bs, b' ≤ b 
@@ -287,62 +286,76 @@ begin
   apply and.intro; apply cons_subset_cons; assumption
 end
 
--- def allp (P : α → Prop) (l : list α) := ∀ a, a ∈ l → P a
+lemma mem_iff_mem_of_equiv {as1 as2 : list α} :
+  (as1 ≃ as2) → ∀ (a : α), a ∈ as1 ↔ a ∈ as2 := 
+begin
+  intros heqv a, cases heqv with hss1 hss2, 
+  apply iff.intro; intro hm,
+  apply hss1; assumption,
+  apply hss2; assumption
+end
+
+lemma map_union [decidable_eq α] [decidable_eq β] 
+  {f : α → β} {as1 as2 : list α} :
+  map f (as1 ∪ as2) ≃ (map f as1) ∪ (map f as2) := 
+begin
+  apply and.intro; intros x hx,
+  rewrite mem_map at hx, cases hx with y hy,
+  cases hy with hy1 hy2, subst hy2, 
+  rewrite mem_union at hy1,
+  cases hy1 with hym hym, 
+  apply mem_union_left, rewrite mem_map,
+  existsi y, apply and.intro, assumption, refl,
+  apply mem_union_right, rewrite mem_map,
+  existsi y, apply and.intro, assumption, refl,
+  rewrite mem_union at hx, cases hx with hx hx;
+  rewrite mem_map at hx; cases hx with y hy;
+  rewrite mem_map; existsi y; cases hy with hy1 hy2;
+  apply and.intro _ hy2,
+  apply mem_union_left hy1, 
+  apply mem_union_right _ hy1
+end
+
+lemma map_subset_map_of_subset 
+  {f : α → β} {as1 as2 : list α} :
+  (as1 ⊆ as2) → (map f as1 ⊆ map f as2) :=
+begin
+  intros hss b hb,
+  rewrite mem_map at *, cases hb with a ha,
+  cases ha with ha1 ha2, subst ha2, 
+  existsi a, apply and.intro _ rfl,
+  apply hss ha1
+end 
+
+lemma map_equiv_map_of_equiv 
+  {f : α → β} {as1 as2 : list α} :
+  (as1 ≃ as2) → (map f as1 ≃ map f as2) :=
+begin
+  intro heqv, cases heqv with hss1 hss2,
+  apply and.intro; 
+  apply map_subset_map_of_subset; assumption
+end 
+
+lemma filter_union [decidable_eq α]
+  {P : α → Prop} [decidable_pred P]
+  {as1 as2 : list α} :
+  filter P (as1 ∪ as2) ≃ (filter P as1 ∪ filter P as2) :=
+begin
+  apply and.intro; intros a ha;
+  rewrite mem_union at *; repeat {rewrite mem_filter at *};
+  cases ha with ha1 ha2, rewrite mem_union at ha1,
+  cases ha1 with hm hm, apply or.inl, 
+  apply and.intro; assumption, apply or.inr, 
+  apply and.intro; assumption,
+  cases ha1 with hm hP,
+  apply and.intro _ hP, apply mem_union_left hm,
+  cases ha2 with hm hP,
+  apply and.intro _ hP, apply mem_union_right _ hm
+end
+
+
 
 def anyp (P : α → Prop) (l : list α) := ∃ a, a ∈ l ∧ P a
-
--- lemma allp_nil {P : α → Prop} : allp P [] :=
--- begin intros _ H, cases H end
-
--- lemma allp_tail_of_allp {P : α → Prop} {a as} : allp P (a::as) → allp P as :=
--- begin intros h x hx, apply h, apply or.inr, apply hx end
--- ==> list.forall_mem_of_forall_mem_cons
-
--- lemma allp_of_allp_cons {P : α → Prop} {a} {as} (h : allp P (a::as)) : 
---   allp P as :=
--- begin intros a' ha', apply h, apply or.inr ha' end
--- ==> list.forall_mem_of_forall_mem_cons
-
--- lemma exp_allp_nil {P : α → Prop} : allp P [] ↔ true :=
--- true_iff_true allp_nil trivial
-
--- lemma allp_of_allp {P Q : α → Prop} (H : ∀ a, P a → Q a) 
---   (as) (HP : allp P as) : allp Q as :=
--- begin intros a Ha, apply H, apply HP, apply Ha end
-
--- lemma allp_union_of_allp_both [decidable_eq α] {P : α → Prop} {as1 as2}  
---   (h : allp P as1 ∧ allp P as2) : allp P (as1 ∪ as2) :=
--- begin
---   cases h with h1 h2, intros a ha, 
---   rewrite mem_union at ha, 
---   cases ha with ha ha, 
---   apply h1 _ ha, apply h2 _ ha,
--- end
-
--- lemma allp_both_of_allp_union [decidable_eq α] {P : α → Prop} {as1 as2}  
---   (h : allp P (as1 ∪ as2)) : allp P as1 ∧ allp P as2 :=
--- begin
---   apply and.intro; intros a ha; apply h,
---   apply mem_union_left ha,
---   apply mem_union_right ha
--- end
--- 
--- lemma exp_allp_union [decidable_eq α] (P : α → Prop) (as1 as2) :
---   (allp P (as1 ∪ as2)) ↔ (allp P as1 ∧ allp P as2) :=
--- iff.intro allp_both_of_allp_union allp_union_of_allp_both
--- 
--- def dec_allp {P : α → Prop} [HP : decidable_pred P] : decidable_pred (allp P)  
--- | [] := is_true (by apply allp_nil)
--- | (a::as) := 
---   begin
---     cases (HP a) with HP HP, apply is_false, intro HC,  
---     apply absurd (HC a (or.inl (by refl))) HP,
---     cases (dec_allp as) with Has Has, 
---     apply is_false, intro HC, apply Has, 
---     intros x Hx, apply HC, apply or.inr Hx, 
---     apply is_true, intros x Hx, cases Hx with Hx Hx,
---     rewrite Hx, apply HP, apply Has x Hx 
---   end
 
 lemma cases_pluck (P : α → Prop) [hd : decidable_pred P] : ∀ (as : list α), 
 (pluck P as = none ∧ (∀ x ∈ as, ¬ P x)) 

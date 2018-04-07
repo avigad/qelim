@@ -34,7 +34,29 @@ begin
 end
 
 def lcm (x y : int) : int :=
-int.of_nat (nat.lcm (nat_abs x) (nat_abs y))
+  (nat.lcm (nat_abs x) (nat_abs y))
+
+lemma lcm_dvd {x y z : int} (hx : has_dvd.dvd x z) (hy : y ∣ z) : lcm x y ∣ z :=
+begin
+  rewrite dvd_iff_nat_abs_dvd_nat_abs, 
+  rewrite dvd_iff_nat_abs_dvd_nat_abs at hx, 
+  rewrite dvd_iff_nat_abs_dvd_nat_abs at hy,
+  unfold lcm, rewrite nat_abs_of_nat,
+  apply nat.lcm_dvd; assumption
+end
+
+lemma lcm_one_right (z : int) :
+  lcm z 1 = abs z :=
+begin
+  unfold lcm, simp, rewrite nat.lcm_one_right, 
+  cases (classical.em (0 ≤ z)) with hz hz,
+  rewrite abs_eq_nat_abs, 
+  rewrite not_le at hz, 
+  apply @eq.trans _ _ (↑(nat_abs z)), refl,
+  rewrite (@of_nat_nat_abs_of_nonpos z _),
+  rewrite abs_of_neg, apply hz,
+  apply le_of_lt hz
+end
 
 def lcms : list int → int
 | [] := 1 
@@ -44,7 +66,7 @@ lemma dvd_lcm_left : ∀ (x y : int), has_dvd.dvd x (lcm x y) := sorry
 
 lemma dvd_lcm_right : ∀ (x y : int), has_dvd.dvd y (lcm x y) := sorry
 
-lemma dvd_lcms {x : int} (hz : x ≠ 0) : ∀ {zs : list int}, x ∈ zs → has_dvd.dvd x (lcms zs) 
+lemma dvd_lcms {x : int} : ∀ {zs : list int}, x ∈ zs → has_dvd.dvd x (lcms zs) 
 | [] hm := by cases hm
 | (z::zs) hm := 
   begin
@@ -55,21 +77,14 @@ lemma dvd_lcms {x : int} (hz : x ≠ 0) : ∀ {zs : list int}, x ∈ zs → has_
     apply dvd_lcm_right, 
   end
 
--- lemma dvd_lcms {z : int} (hz : z ≠ 0) : ∀ {zs : list int}, z ∈ zs → has_dvd.dvd z (lcms zs) 
--- | [] hm := by cases hm
--- | (z'::zs) hm := 
---   begin
---     unfold lcms, unfold list.map, unfold nat.lcms,
---     rewrite dvd_iff_nat_abs_dvd_nat_abs, simp,
---     rewrite list.mem_cons_iff at hm, cases hm with hm hm,
---     subst hm, apply nat.dvd_lcm_left,
---     apply dvd.trans _ (nat.dvd_lcm_right _ _),
---     have h := dvd_lcms hm, unfold lcms at h,
---     rewrite iff.symm int.coe_nat_dvd,
---     rewrite nat_abs_dvd, apply h
---   end 
-
 lemma nonzero_of_pos {z : int} : z > 0 → z ≠ 0 := sorry
+
+lemma lcm_nonneg (x y : int) : lcm x y ≥ 0 := 
+by unfold lcm
+
+lemma lcms_nonneg : ∀ (zs : list int), lcms zs ≥ 0 
+| [] := by unfold lcms 
+| (z::zs) := by unfold lcms
 
 lemma lcm_pos (x y : int) : x ≠ 0 → y ≠ 0 → lcm x y > 0 := sorry
 
@@ -82,6 +97,36 @@ lemma lcms_pos : ∀ {zs : list int}, (∀ z : int, z ∈ zs → z ≠ 0) → lc
     apply nonzero_of_pos, apply lcms_pos,
     apply list.forall_mem_of_forall_mem_cons hnzs 
   end
+
+lemma lcms_dvd {k : int} : 
+  ∀ {zs : list int}, (∀ z ∈ zs, has_dvd.dvd z k) → (has_dvd.dvd (lcms zs) k) 
+| [] hk := one_dvd _
+| (z::zs) hk :=
+  begin
+    unfold lcms, apply lcm_dvd,
+    apply hk _ (or.inl rfl),
+    apply lcms_dvd, 
+    apply list.forall_mem_of_forall_mem_cons hk
+  end
+
+lemma lcms_distrib (xs ys zs : list int) : 
+  list.equiv zs (xs ∪ ys) 
+  → lcms zs = lcm (lcms xs) (lcms ys) :=
+begin
+  intro heqv, apply dvd_antisymm,
+  apply lcms_nonneg, apply lcm_nonneg,
+  apply lcms_dvd, intros z hz,
+  rewrite (list.mem_iff_mem_of_equiv heqv) at hz,
+  rewrite list.mem_union at hz, cases hz with hz hz,
+  apply dvd_trans (dvd_lcms _) (dvd_lcm_left _ _);
+  assumption,
+  apply dvd_trans (dvd_lcms _) (dvd_lcm_right _ _);
+  assumption,
+  apply lcm_dvd; apply lcms_dvd; intros z hz;
+  apply dvd_lcms; rewrite (list.mem_iff_mem_of_equiv heqv),
+  apply list.mem_union_left hz,
+  apply list.mem_union_right _ hz
+end
 
 lemma dvd_of_mul_dvd_mul_left : ∀ {x y z : int}, 
   z ≠ 0 → has_dvd.dvd (z * x) (z * y) → has_dvd.dvd x y := sorry
@@ -127,6 +172,38 @@ lemma sign_self_mul (z : int) : int.sign z * z = abs z := sorry
 lemma div_mul_comm (x y z : int) : has_dvd.dvd y x → (x / y) * z = x * z / y := sorry
 
 lemma abs_dvd (x y : int) : has_dvd.dvd (abs x) y ↔ has_dvd.dvd x y := sorry
+
+lemma exists_nat_diff (x y : int) (n : nat) :
+  x ≤ y → y < x + int.of_nat n → ∃ (m : nat), m < n ∧ y = x + int.of_nat m := sorry
+
+lemma nonneg_iff_exists (z : int) :
+  0 ≤ z ↔ ∃ (n : nat), z = int.of_nat n :=
+begin
+  cases z with m m, apply true_iff_true, constructor,
+  existsi m, refl, apply false_iff_false; intro hc,
+  cases hc, cases hc with m hm, cases hm
+end
+
+lemma exists_lt_and_lt (x y : int) :
+  ∃ z, z < x ∧ z < y := 
+begin
+  cases (lt_trichotomy x y),
+  existsi (pred x), 
+  apply and.intro (pred_self_lt _) (lt_trans (pred_self_lt _) h),
+  cases h with h h, subst h, 
+  existsi (pred x), apply and.intro (pred_self_lt _) (pred_self_lt _),
+  existsi (pred y),
+  apply and.intro (lt_trans (pred_self_lt _) h) (pred_self_lt _)
+end
+
+lemma le_mul_of_pos_left : ∀ {x y : int}, y ≥ 0 → x > 0 → y ≤ x * y :=
+begin
+  intros x y hy hx,
+  have hx' : x ≥ 1 := add_one_le_of_lt hx,
+  let h := mul_le_mul hx' (le_refl y) hy _,
+  rewrite one_mul at h, apply h, 
+  apply le_of_lt hx
+end
 
 end int
 

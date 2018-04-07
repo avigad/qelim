@@ -11,20 +11,40 @@ lemma I_atom_dvd (d i ks zs) :
 lemma I_atom_ndvd (d i ks zs) : 
   I (A' (atom.ndvd d i ks)) zs ↔ ¬ (has_dvd.dvd d (i + list.dot_prod ks zs)) := iff.refl _
 
+meta def atom_dep0_split :=
+`[cases ks with k' ks', 
+  apply or.inl, apply not_not_intro rfl,
+  cases (classical.em (k' = 0)) with h h, subst h, 
+  apply or.inl, apply not_not_intro rfl,  
+  apply or.inr, existsi k', existsi ks',
+  apply and.intro; simp, apply h]
+
 lemma le_dep0_split (i ks) : 
   (¬ atom_type.dep0 int (atom.le i ks)) 
-  ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := sorry
+  ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := by atom_dep0_split
 
 lemma dvd_dep0_split (d i ks) : 
   (¬ atom_type.dep0 int (atom.dvd d i ks)) 
-  ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := sorry
+  ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := by atom_dep0_split
 
 lemma ndvd_dep0_split (d i ks) : 
   (¬ atom_type.dep0 int (atom.ndvd d i ks)) 
-  ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := sorry
+  ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := by atom_dep0_split
 
-lemma hco_not_dep0 (m a) : 
-  (¬ atom_type.dep0 int a) → hd_coeff_one m a = a := sorry
+meta def hco_not_dep0_tac :=
+`[  cases ks with k' ks', refl, 
+    cases (classical.em (k' = 0)) with hz hnz,
+    subst hz, refl, exfalso, apply hnd, apply hnz]
+
+lemma hco_not_dep0 (m) :
+  ∀ a, (¬ atom_type.dep0 int a) → hd_coeff_one m a = a :=
+begin
+  intros a hnd, cases a with i ks d i ks d i ks,
+  repeat
+  {cases ks with k' ks', refl, 
+    cases (classical.em (k' = 0)) with hz hnz,
+    subst hz, refl, exfalso, apply hnd, apply hnz}
+end
 
 lemma hco_le_nonzero (m i k : int) (ks) : 
   k ≠ 0 → 
@@ -144,7 +164,7 @@ begin
   apply and.intro, intro hc, apply hne hc,
   apply fnormal_map_hco_of_fnormal _ hne _ hp, 
   intros a ha, apply or_of_not_imp_right,
-  intro haz, apply int.dvd_lcms, apply haz,
+  intro haz, apply int.dvd_lcms,
   rewrite list.mem_map, existsi a, apply and.intro,
   unfold atoms_dep0, apply list.mem_filter_of_mem,
   apply ha, apply haz, refl
@@ -340,12 +360,73 @@ begin
     unfold hd_coeff, unfold list.head_dft, simp
 end
 
+lemma ex_iff_inf_or_bnd_aux (P : int → Prop)
+  (hP : ∀ (y : ℤ), (P y → ∃ (x : ℤ), x < y ∧ P x))
+  (y : int) : ∀ (m n : nat), n ≤ m → P (y + int.of_nat n) → ∃ (x : int), (x < y ∧ P x)
+| 0 n hle hn := 
+  begin 
+    cases n with n,
+    have he : int.of_nat 0 = 0, refl, 
+    rewrite he at hn, rewrite add_zero at hn, 
+    apply hP, apply hn, cases hle
+  end
+| (m+1) n hle hn :=
+  begin
+    cases (lt_or_eq_of_le hle) with hlt heq,
+    apply ex_iff_inf_or_bnd_aux m n,
+    apply nat.le_of_lt_succ, apply hlt, apply hn,
+    subst heq, clear hle, 
+    cases (hP _ hn) with w hw, cases hw with hw1 hw2,
+    cases (classical.em (w < y)) with hw3 hw3,
+    existsi w, apply and.intro; assumption,
+    rewrite not_lt at hw3, 
+    cases (int.exists_nat_diff y w (m+1) hw3 hw1) with k hk,
+    cases hk with hk1 hk2, 
+    apply ex_iff_inf_or_bnd_aux m k, 
+    apply nat.le_of_lt_succ, apply hk1,
+    rewrite hk2 at hw2, apply hw2,
+  end
+   
 lemma ex_iff_inf_or_bnd (P : int → Prop) :
   (∃ z, P z) ↔ ((∀ y, ∃ x, x < y ∧ P x) ∨ (∃ y, (P y ∧ ∀ x, x < y → ¬ P x))) := 
-sorry
+begin
+  apply iff.intro; intro h1, 
+  cases (classical.em ( ∃ (y : ℤ), P y ∧ ∀ (x : ℤ), x < y → ¬P x)) with h2 h2,
+  apply or.inr h2, rewrite not_exists at h2,
+  apply or.inl, intro y, cases h1 with z hz,
+  cases (lt_or_le z y) with hlt hle, 
+  existsi z, apply and.intro; assumption,
+  rewrite iff.symm sub_nonneg at hle,
+  rewrite int.nonneg_iff_exists at hle,
+  cases hle with n hn, 
+  apply (ex_iff_inf_or_bnd_aux P _ y n n _),
+  rewrite sub_eq_iff_eq_add at hn, rewrite hn at hz,
+  rewrite add_comm, apply hz, 
+  intros x hx, apply classical.by_contradiction,
+  intro hc, apply (h2 x), apply and.intro hx,
+  rewrite not_exists at hc, intros w hw1 hw2,
+  apply hc w, apply and.intro; assumption, 
+  apply le_refl, 
+
+  cases h1 with hinf hbnd, cases (hinf 0) with z hz,
+  existsi z, apply hz^.elim_right, 
+  cases hbnd with z hz, 
+  existsi z, apply hz^.elim_left  
+end
 
 lemma mem_bnd_points_and (p q) : 
-  ∀ b, ((b ∈ bnd_points p ∨ b ∈ bnd_points q) → b ∈ bnd_points (p ∧' q)) := sorry
+  ∀ b, ((b ∈ bnd_points p ∨ b ∈ bnd_points q) → b ∈ bnd_points (p ∧' q)) := 
+begin
+  unfold bnd_points, intro zzs,
+  repeat {rewrite list.mem_filter_map},
+  intro hm, cases hm with hm hm;
+ {cases hm with a ha, cases ha with ha1 ha2,
+  unfold atoms_dep0 at ha1, rewrite list.mem_filter at ha1, 
+  cases ha1 with ha1a ha1b, existsi a, apply and.intro _ ha2,
+  apply list.mem_filter_of_mem _ ha1b, unfold atoms,
+  {apply list.mem_union_left ha1a _
+   <|> apply list.mem_union_right _ ha1a}}
+end
 
 lemma unified_hd_coeffs_one :
   ∀ p, unified (hd_coeffs_one p) :=
@@ -359,39 +440,161 @@ begin
   apply unfied_hd_coeff
 end
 
-lemma inf_minus_prsv (p : fm atom) :
-  ∃ (y : int), ∀ x, x < y → ∀ (zs : list int), 
-    (I (inf_minus p) zs ↔ I p zs) := sorry
+meta def inf_minus_prsv_tac :=
+`[existsi (0 : int), intros z hz, unfold inf_minus]
 
-lemma inf_minus_decr (p : fm atom) (z : int) (zs) :
-  I (inf_minus p) (z::zs) 
-  → I (inf_minus p) ((z - coeffs_lcm p)::zs) := sorry 
+lemma inf_minus_prsv (zs) : ∀ (p : fm atom),
+  ∃ (y : int), ∀ z, z < y →  
+    (I (inf_minus p) (z::zs) ↔ I p (z::zs)) 
+| ⊤' := 
+  begin 
+    existsi (0 : int), intros z hz,
+    apply true_iff_true; trivial
+  end
+| ⊥' := 
+  begin 
+    existsi (0 : int), intros z hz,
+    apply false_iff_false; intro hc; cases hc
+  end
+| (A' (atom.le i ks)) := 
+  begin
+    cases ks with k ks, inf_minus_prsv_tac,
+    cases (lt_trichotomy k 0) with hlt heqgt,
 
-lemma inf_minus_incr (p : fm atom) (z : int) (zs) :
-  I (inf_minus p) (z::zs) 
-  → I (inf_minus p) ((z + coeffs_lcm p)::zs) := sorry 
+    existsi (- abs (i - list.dot_prod ks zs)), 
+    intros z hz,
+    unfold inf_minus, rewrite ite_true,
+    rewrite I_atom_le, simp,
+    rewrite iff.symm sub_le_iff_le_add,
+    apply true_iff_true, trivial,
+    apply le_trans (le_abs_self _),
+    rewrite lt_neg at hz,
+    apply le_trans (le_of_lt hz),
+    rewrite eq.symm (neg_neg k),
+    rewrite neg_mul_comm,
+    apply int.le_mul_of_pos_left,
+    apply le_trans _ (le_of_lt hz),
+    apply abs_nonneg, unfold gt,
+    rewrite lt_neg, apply hlt, apply hlt,
+
+    cases heqgt with heq hgt, subst heq,
+    inf_minus_prsv_tac,
+    rewrite ite_false,
+    rewrite ite_false, intro hc, cases hc,
+    intro hc, cases hc,
+
+    existsi (- abs (i - list.dot_prod ks zs)),
+    intros z hz, unfold inf_minus,
+    rewrite ite_false, rewrite ite_true,
+    rewrite I_atom_le, simp, 
+    rewrite iff.symm sub_le_iff_le_add,
+    apply false_iff_false, intro hc, cases hc,
+    rewrite not_le,
+    apply @lt_of_le_of_lt _ _ _ z,
+    rewrite iff.symm neg_le_neg_iff,
+    rewrite neg_mul_eq_mul_neg,
+    apply int.le_mul_of_pos_left,
+    unfold ge, rewrite le_neg,
+    apply le_trans, apply le_of_lt hz,
+    rewrite neg_le_neg_iff, apply abs_nonneg,
+    apply hgt, apply lt_of_lt_of_le hz,
+    rewrite neg_le, apply neg_le_abs_self,
+    apply hgt, rewrite not_lt, 
+    apply le_of_lt hgt
+  end
+| (A' (atom.dvd d i ks)) := by inf_minus_prsv_tac
+| (A' (atom.ndvd d i ks)) := by inf_minus_prsv_tac
+| (p ∧' q) := 
+  begin
+    cases (inf_minus_prsv p) with x hx,
+    cases (inf_minus_prsv q) with y hy,
+    cases (int.exists_lt_and_lt x y) with z hz,
+    cases hz with hz1 hz2,
+    existsi z, intros w hw,
+    unfold inf_minus, rewrite exp_I_and_o,
+    rewrite hx, rewrite hy, rewrite exp_I_and,
+    apply lt.trans hw hz2,
+    apply lt.trans hw hz1,
+  end
+| (p ∨' q) := 
+  begin
+    cases (inf_minus_prsv p) with x hx,
+    cases (inf_minus_prsv q) with y hy,
+    cases (int.exists_lt_and_lt x y) with z hz,
+    cases hz with hz1 hz2,
+    existsi z, intros w hw,
+    unfold inf_minus, rewrite exp_I_or_o,
+    rewrite hx, rewrite hy, rewrite exp_I_or,
+    apply lt.trans hw hz2,
+    apply lt.trans hw hz1,
+  end
+| (¬' p) := by inf_minus_prsv_tac
+| (∃' p) := by inf_minus_prsv_tac
 
 lemma pos_coeffs_lcm (p : fm atom) :
-  coeffs_lcm p > 0 := sorry
+  coeffs_lcm p > 0 := 
+begin
+  unfold coeffs_lcm, apply int.lcms_pos,
+  intros z hz, rewrite list.mem_map at hz,
+  cases hz with a ha, cases ha with ha1 ha2,
+  subst ha2, unfold atoms_dep0 at ha1, 
+  rewrite list.mem_filter at ha1, apply ha1^.elim_right
+end
 
-lemma pos_divisors_lcm (p : fm atom) :
-  divisors_lcm p > 0 := sorry
+lemma pos_divisors_lcm (p : fm atom) (hn : fnormal int p) :
+  divisors_lcm p > 0 := 
+begin
+  unfold divisors_lcm, apply int.lcms_pos,
+  intros z hz, rewrite list.mem_map at hz,
+  cases hz with a ha, cases ha with ha1 ha2,
+  subst ha2, unfold atoms_dep0 at ha1, 
+  rewrite list.mem_filter at ha1, 
+  cases ha1 with ha1 ha2,
+  rewrite iff.symm normal_iff_divisor_nonzero,
+  rewrite fnormal_iff_fnormal_alt at hn,
+  apply hn, apply ha1
+end
+
+meta def coeffs_lcm_atom_tac :=
+`[intro hk, unfold coeffs_lcm,
+  unfold atoms_dep0, unfold atoms,
+  unfold list.filter, rewrite ite_true,
+  unfold list.map, unfold hd_coeff, 
+  unfold list.head_dft, unfold int.lcms,
+  apply int.lcm_one_right, apply hk]
 
 lemma coeffs_lcm_atom_le {i k : int} {ks : list int} :
-  k ≠ 0 → coeffs_lcm (A' (atom.le i (k::ks))) = abs k := sorry
+  k ≠ 0 → coeffs_lcm (A' (atom.le i (k::ks))) = abs k := 
+by coeffs_lcm_atom_tac
 
 lemma coeffs_lcm_atom_dvd {d i k : int} {ks : list int} :
-  k ≠ 0 → coeffs_lcm (A' (atom.dvd d i (k::ks))) = abs k := sorry
+  k ≠ 0 → coeffs_lcm (A' (atom.dvd d i (k::ks))) = abs k := 
+by coeffs_lcm_atom_tac
 
 lemma coeffs_lcm_atom_ndvd {d i k : int} {ks : list int} :
-  k ≠ 0 → coeffs_lcm (A' (atom.ndvd d i (k::ks))) = abs k := sorry
+  k ≠ 0 → coeffs_lcm (A' (atom.ndvd d i (k::ks))) = abs k := 
+by coeffs_lcm_atom_tac
 
 lemma coeffs_lcm_and (p q) :
-  coeffs_lcm (p ∧' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := sorry
+  coeffs_lcm (p ∧' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := 
+begin
+  apply int.lcms_distrib, 
+  apply list.equiv.trans, 
+  apply list.map_equiv_map_of_equiv,
+  apply list.filter_union,
+  apply list.map_union
+end
 
 lemma coeffs_lcm_or (p q) :
-  coeffs_lcm (p ∨' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := sorry
-  
+  coeffs_lcm (p ∨' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := 
+begin
+  apply int.lcms_distrib, 
+  apply list.equiv.trans, 
+  apply list.map_equiv_map_of_equiv,
+  apply list.filter_union,
+  apply list.map_union
+end
+
 lemma coeffs_lcm_pos (p) :
   coeffs_lcm p > 0 := sorry
   
@@ -507,8 +710,8 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     rewrite atom_ndvd_mod at h2,
     rewrite mod_add_eq_mod at h2,
     exfalso, apply h1 h2, 
-    apply dvd.trans (int.dvd_lcms _ _) hk,
-    apply hn, rewrite list.mem_map,
+    apply dvd.trans (int.dvd_lcms _) hk,
+    rewrite list.mem_map,
     existsi (atom.ndvd d i ks), apply and.intro,
     unfold atoms_dep0, rewrite list.mem_filter,
     apply and.intro, apply or.inl rfl,
@@ -528,8 +731,8 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     rewrite atom_dvd_mod at h2,
     rewrite mod_add_eq_mod at h2,
     exfalso, apply h1 h2, 
-    apply dvd.trans (int.dvd_lcms _ _) hk,
-    apply hn, rewrite list.mem_map,
+    apply dvd.trans (int.dvd_lcms _) hk,
+    rewrite list.mem_map,
     existsi (atom.dvd d i ks), apply and.intro,
     unfold atoms_dep0, rewrite list.mem_filter,
     apply and.intro, apply or.inl rfl,
@@ -608,12 +811,12 @@ begin
   rewrite list.nil_dot_prod at hq2,
   rewrite add_zero at hq2,
   
-  cases (inf_minus_prsv p) with lb hlb,
+  cases (inf_minus_prsv bs p) with lb hlb,
 
   cases (no_lb_inf_minus p z bs hq2 lb) with x hx,
   cases hx with hx1 hx2, 
 
-  rewrite (hlb x hx1 (x::bs)) at hx2,
+  rewrite (hlb x hx1) at hx2,
   existsi x, apply hx2, 
 
   unfold disj at h, rewrite I_list_disj at h,
@@ -630,9 +833,9 @@ begin
   constructor, apply hv, 
 
   rewrite ex_iff_inf_or_bnd at h, cases h with h h,
-  apply or.inl, cases (inf_minus_prsv p) with lb hlb,
+  apply or.inl, cases (inf_minus_prsv bs p) with lb hlb,
   cases (h lb) with x hx, cases hx with hx1 hx2, 
-  rewrite iff.symm (hlb x hx1 (x::bs)) at hx2, 
+  rewrite iff.symm (hlb x hx1) at hx2, 
   unfold disj, rewrite I_list_disj, simp, 
   unfold function.comp,
   existsi (I (inf_minus p) ( (int.mod x (divisors_lcm p)) :: bs)),
@@ -641,8 +844,9 @@ begin
   apply list.mem_irange,
   apply int.mod_nonneg,
   apply int.neq_zero_of_gt_zero, apply pos_divisors_lcm,
+  apply hn,
   unfold divisors_lcm, apply int.mod_lt_of_pos, 
-  apply pos_divisors_lcm, 
+  apply pos_divisors_lcm, apply hn,
   rewrite subst_prsv, rewrite list.nil_dot_prod,
   rewrite add_zero, rewrite inf_minus_mod at hx2,
   apply hx2,
@@ -651,7 +855,8 @@ begin
 
   have h := 
     qe_cooper_one_prsv_lb 
-      (lb - divisors_lcm p) bs p hf hn hu (divisors_lcm p) (pos_divisors_lcm _)
+      (lb - (divisors_lcm p)) bs p hf hn hu 
+      (divisors_lcm p) (pos_divisors_lcm _ hn)
       (dvd_refl _) _ _,
   cases h with k' h, cases h with iks h, cases h with hiks h,
   cases h with h1 h, cases h with h2 h3,
@@ -679,7 +884,7 @@ begin
   apply list.mem_irange, apply h1, apply h2, refl, refl,
   rewrite subst_prsv, simp, apply hlb1,
   apply hlb2, rewrite sub_lt_self_iff,
-  apply pos_divisors_lcm, 
+  apply pos_divisors_lcm, apply hn,
   simp, apply hlb1
 end
 
@@ -764,7 +969,7 @@ begin
   apply hk 
 end
 
-lemma hp_coeffs_one_prsv_2 (lcm z : int) (zs) 
+lemma hcso_prsv_2 (lcm z : int) (zs) 
   (hpos : lcm > 0) :
   ∀ (p : fm atom), nqfree p → fnormal ℤ p 
   → has_dvd.dvd (coeffs_lcm p) lcm
@@ -794,7 +999,7 @@ lemma hp_coeffs_one_prsv_2 (lcm z : int) (zs)
     cases hn with hnp hnq,
     cases hf with hfp hfq,
     rewrite coeffs_lcm_and at hdvd,
-    apply and.intro; apply hp_coeffs_one_prsv_2;
+    apply and.intro; apply hcso_prsv_2;
     try {assumption},
     apply dvd.trans _ hdvd, apply int.dvd_lcm_left,
     apply dvd.trans _ hdvd, apply int.dvd_lcm_right
@@ -807,10 +1012,10 @@ lemma hp_coeffs_one_prsv_2 (lcm z : int) (zs)
     cases hf with hfp hfq,
     rewrite coeffs_lcm_or at hdvd,
     cases h with hp hq, apply or.inl, 
-    apply hp_coeffs_one_prsv_2; try {assumption},
+    apply hcso_prsv_2; try {assumption},
     apply dvd.trans _ hdvd, apply int.dvd_lcm_left,
     apply or.inr, 
-    apply hp_coeffs_one_prsv_2; try {assumption},
+    apply hcso_prsv_2; try {assumption},
     apply dvd.trans _ hdvd, apply int.dvd_lcm_right
   end
 | (¬' p) hf hn hdvd h := by cases hf
@@ -823,7 +1028,7 @@ meta def hcso_prsv_tac :=
   rewrite int.div_self, rewrite mul_one,
   rewrite eq.symm hw at h, rewrite mul_comm at h]
 
-lemma hd_coeffs_one_prsv_1 (lcm z : int) (zs)
+lemma hcso_prsv_1 (lcm z : int) (zs)
   (hlcm1 : lcm > 0) 
   (hdvd : has_dvd.dvd lcm z) :
   ∀ (p : fm atom), nqfree p → fnormal ℤ p 
@@ -878,7 +1083,7 @@ lemma hd_coeffs_one_prsv_1 (lcm z : int) (zs)
     cases hf with hfp hfq, cases hn with hnp hnq,
     unfold map_fm at h, cases h with hp hq, 
     rewrite coeffs_lcm_and at hlcm2,
-    apply and.intro; apply hd_coeffs_one_prsv_1; 
+    apply and.intro; apply hcso_prsv_1; 
     try {assumption},
     apply dvd.trans _ hlcm2, apply int.dvd_lcm_left,
     apply dvd.trans _ hlcm2, apply int.dvd_lcm_right,
@@ -889,15 +1094,15 @@ lemma hd_coeffs_one_prsv_1 (lcm z : int) (zs)
     rewrite exp_I_or, 
     cases hf with hfp hfq, cases hn with hnp hnq,
     unfold map_fm at h, rewrite exp_I_or at h, cases h with hp hq,
-    apply or.inl, apply hd_coeffs_one_prsv_1; try {assumption},
+    apply or.inl, apply hcso_prsv_1; try {assumption},
     apply dvd.trans _ hlcm2, apply int.dvd_lcm_left,
-    apply or.inr, apply hd_coeffs_one_prsv_1; try {assumption},
+    apply or.inr, apply hcso_prsv_1; try {assumption},
     apply dvd.trans _ hlcm2, apply int.dvd_lcm_right
   end
 | (¬' p) hf hn _ h := by cases hf
 | (∃' p) hf hn _ h := by cases hf
 
-lemma hd_coeffs_one_prsv :  
+lemma hcso_prsv :  
 ∀ (p : fm atom) (hf : nqfree p) (hn : fnormal ℤ p) (bs : list ℤ),
 (∃ (b : ℤ), I (hd_coeffs_one p) (b :: bs)) ↔ ∃ (b : ℤ), I p (b :: bs) :=
 begin
@@ -908,7 +1113,7 @@ begin
   rewrite exp_I_and at hz,
   existsi (has_div.div z (coeffs_lcm p)), 
   cases hz with hz1 hz2, 
-  apply hd_coeffs_one_prsv_1; try {assumption},
+  apply hcso_prsv_1; try {assumption},
   rewrite I_atom_dvd at hz1, 
   rewrite zero_add at hz1,
   rewrite list.cons_dot_prod_cons at hz1,
@@ -924,7 +1129,7 @@ begin
   rewrite list.cons_dot_prod_cons,
   rewrite list.nil_dot_prod,
   rewrite add_zero, rewrite one_mul,
-  apply dvd_mul_right, apply hp_coeffs_one_prsv_2;
+  apply dvd_mul_right, apply hcso_prsv_2;
   try {assumption},
   apply coeffs_lcm_pos, apply dvd_refl
 end
@@ -935,7 +1140,7 @@ lemma sqe_cooper_prsv :
 begin
   intros p hf hn bs, unfold sqe_cooper, 
   rewrite qe_cooper_one_prsv,
-  apply hd_coeffs_one_prsv p hf hn bs, 
+  apply hcso_prsv p hf hn bs, 
   apply nqfree_hcso_of_nqfree p hf,
   apply hd_coeffs_one_normal_prsv _ hn,
   apply unified_hd_coeffs_one

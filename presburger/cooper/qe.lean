@@ -26,7 +26,6 @@ def divisors_lcm (p) :=
 def hd_coeffs_one (p : fm atom) : fm atom := 
 A' (atom.dvd (coeffs_lcm p) 0 [1]) ∧' (map_fm (hd_coeff_one (coeffs_lcm p)) p)
 
--- Assumes : nfree arg 
 def inf_minus : fm atom → fm atom 
 | ⊤' := ⊤' 
 | ⊥' := ⊥' 
@@ -55,7 +54,7 @@ def get_lb : atom → option (int × list int)
 | (atom.ndvd _ _ _) := none
 
 def bnd_points (p) := 
-  list.omap get_lb (atoms_dep0 ℤ p)
+  list.filter_map get_lb (atoms_dep0 ℤ p)
 
 def list.irange (z : int) : list int :=
 list.map int.of_nat (list.range (int.nat_abs z))
@@ -65,7 +64,7 @@ lemma list.mem_irange (z y) : 0 ≤ z → z < y → z ∈ list.irange y := sorry
 def qe_cooper_one (p : fm atom) : fm atom := 
   let as := atoms_dep0 int p in 
   let d := int.lcms (list.map divisor as) in
-  let lbs := list.omap get_lb as in
+  let lbs := list.filter_map get_lb as in
   or_o 
     (disj (list.irange d) (λ n, subst n [] (inf_minus p))) 
     (disj lbs 
