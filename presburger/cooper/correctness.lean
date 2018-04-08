@@ -38,6 +38,55 @@ lemma ndvd_dep0_split (d i ks) :
   (¬ atom_type.dep0 int (atom.ndvd d i ks)) 
   ∨ ∃ k, ∃ ks', (k ≠ 0 ∧ ks = (k::ks')) := by atom_dep0_split
 
+lemma subst_prsv (i ks xs) : 
+  ∀ p, nqfree p →  
+    (I (subst i ks p) xs ↔ I p ((i + list.dot_prod ks xs)::xs))
+| ⊤' _ := by refl
+| ⊥' _ := by refl
+| (A' (atom.le i ks')) _ :=
+  begin
+    unfold subst, unfold map_fm, cases ks' with k' ks';
+    unfold asubst, repeat {rewrite I_atom_le}, simp,
+    simp, rewrite list.comp_add_dot_prod, 
+    rewrite mul_add, simp,
+  end
+| (A' (atom.ndvd d i ks')) _ :=
+  begin
+    unfold subst, unfold map_fm, cases ks' with k' ks';
+    unfold asubst, repeat {rewrite I_atom_ndvd}, simp,
+    rewrite list.comp_add_dot_prod, simp,
+    rewrite mul_add, simp
+  end
+| (A' (atom.dvd d i ks')) _ :=
+  begin
+    unfold subst, unfold map_fm, cases ks' with k' ks';
+    unfold asubst, repeat {rewrite I_atom_dvd}, simp,
+    rewrite list.comp_add_dot_prod, simp,
+    rewrite mul_add, simp
+  end
+| (p ∧' q) hf := 
+  begin
+    cases hf with hfp hfq,
+    unfold subst, unfold map_fm,
+    repeat {rewrite exp_I_and},
+    let ihp := subst_prsv p hfp, 
+    unfold subst at ihp, rewrite ihp, 
+    let ihq := subst_prsv q hfq, 
+    unfold subst at ihq, rewrite ihq 
+  end
+| (p ∨' q) hf :=
+  begin
+    cases hf with hfp hfq,
+    unfold subst, unfold map_fm,
+    repeat {rewrite exp_I_or},
+    let ihp := subst_prsv p hfp, 
+    unfold subst at ihp, rewrite ihp, 
+    let ihq := subst_prsv q hfq, 
+    unfold subst at ihq, rewrite ihq 
+  end
+| (¬' p) hf := by cases hf
+| (∃' p) hf := by cases hf 
+
 meta def hco_not_dep0_tac :=
 `[  cases ks with k' ks', refl, 
     cases (classical.em (k' = 0)) with hz hnz,
@@ -260,7 +309,7 @@ lemma pred_inf_minus_of_pred (P) (hup : prop_up_closed P)
     cases a with k ks, cases ks with k' ks, apply h,
     unfold inf_minus, apply cases_ite; intro h1,
     apply hup ⊤', apply cases_ite; intro h2, apply hup ⊥', 
-    rewrite int.eq_zero_of_not_gt_zero_of_not_lt_zero k' h1 h2 at h,
+    rewrite int.eq_zero_of_nonpos_of_nonzero k' h1 h2 at h,
     apply h, apply h, apply h
   end
 | (p ∧' q) h := 
@@ -436,12 +485,14 @@ begin
 end
 
 lemma unified_hd_coeffs_one :
-  ∀ p, unified (hd_coeffs_one p) :=
+  ∀ p, nqfree p → unified (hd_coeffs_one p) :=
 begin
-  intro p, unfold hd_coeffs_one,
+  intros p hf, unfold hd_coeffs_one,
   unfold unified, unfold atoms, simp,
   apply and.intro, apply or.inr (or.inr rfl),
-  intros a ha, rewrite atoms_map_fm at ha,
+  intros a ha, 
+  rewrite list.mem_iff_mem_of_equiv
+    (atoms_map_fm _ _ hf) at ha,
   rewrite list.mem_map at ha, cases ha with a' ha',
   cases ha' with h1 h2, subst h2,
   apply unfied_hd_coeff
@@ -799,6 +850,37 @@ begin
   rewrite int.add_mul_mod_self
 end
 
+lemma nqfree_inf_minus_of_nqfree :
+  ∀ p, nqfree p → nqfree (inf_minus p) 
+| ⊤' h := h
+| ⊥' h := h
+| (A' a) h := 
+  begin
+    cases a with i ks d i ks di ks;
+    cases ks with k ks;
+    unfold inf_minus,
+    apply cases_ite; intro _, trivial,
+    apply cases_ite; intro _; trivial
+  end
+| (p ∧' q) h := 
+  begin
+    cases h with h1 h2, unfold inf_minus,
+    apply cases_and_o, trivial,
+    repeat {apply nqfree_inf_minus_of_nqfree, assumption},
+    apply and.intro; apply nqfree_inf_minus_of_nqfree;
+    assumption
+  end
+| (p ∨' q) h :=
+  begin
+    cases h with h1 h2, unfold inf_minus,
+    apply cases_or_o, trivial,
+    repeat {apply nqfree_inf_minus_of_nqfree, assumption},
+    apply and.intro; apply nqfree_inf_minus_of_nqfree;
+    assumption
+  end
+| (¬' p) h := by cases h
+| (∃' p) h := by cases h
+
 lemma le_hd_coeff_decr {y z i k : int} {zs ks : list int} :
 k < 0 → y < z 
 → I (A' atom.le i (k :: ks)) (z :: zs)
@@ -840,7 +922,7 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     exfalso, apply h1, 
     apply le_hd_coeff_decr _ _ h2, 
     apply int.pred_self_lt,
-    apply int.lt_add_of_pos k z hkp,
+    apply lt_add_of_pos_right _ hkp,
     cases hu2 with hu2 hu2,
     unfold hd_coeff at hu2, 
     unfold list.head_dft at hu2, 
@@ -1000,7 +1082,7 @@ begin
   cases hx with hx1 hx2, 
 
   rewrite (hlb x hx1) at hx2,
-  existsi x, apply hx2, 
+  existsi x, apply hx2, apply nqfree_inf_minus_of_nqfree _ hf,
 
   unfold disj at h, rewrite I_list_disj at h,
   cases h with q hq, rewrite list.mem_map at hq,
@@ -1013,7 +1095,7 @@ begin
   rewrite list.mem_map at hw, cases hw with hw1 hw2,
   subst hw2, cases hw1 with z hz, cases hz with hz1 hz2,
   subst hz2, rewrite subst_prsv at hv,
-  constructor, apply hv, 
+  constructor, apply hv, apply hf,
 
   rewrite ex_iff_inf_or_bnd at h, cases h with h h,
   apply or.inl, cases (inf_minus_prsv bs p) with lb hlb,
@@ -1024,14 +1106,17 @@ begin
   existsi (I (inf_minus p) ( (int.mod x (divisors_lcm p)) :: bs)),
   apply and.intro, rewrite list.mem_map, 
   existsi (int.mod x (divisors_lcm p)), apply and.intro,
-  apply list.mem_irange,
-  apply int.mod_nonneg,
-  apply int.neq_zero_of_gt_zero, apply pos_divisors_lcm,
-  apply hn,
+  apply list.mem_irange, apply int.mod_nonneg,
+  
+  apply int.nonzero_of_pos, apply pos_divisors_lcm,
+  apply hn, apply int.lcms_nonneg,
   unfold divisors_lcm, apply int.mod_lt_of_pos, 
   apply pos_divisors_lcm, apply hn,
   rewrite subst_prsv, rewrite list.nil_dot_prod,
   rewrite add_zero, rewrite inf_minus_mod at hx2,
+  apply nqfree_inf_minus_of_nqfree _ hf, apply hf,
+  apply dvd_refl,
+  rewrite inf_minus_mod at hx2,
   apply hx2, apply hf, apply dvd_refl,
   cases h with lb hlb, cases hlb with hlb1 hlb2, 
   apply or.inr, 
@@ -1064,8 +1149,9 @@ begin
   existsi (subst (k' + iks.fst) (map_neg (iks.snd)) p),
   apply and.intro, rewrite list.mem_map,
   existsi k', apply and.intro, 
-  apply list.mem_irange, apply h1, apply h2, refl, refl,
-  rewrite subst_prsv, simp, apply hlb1,
+  apply list.mem_irange, apply h1, 
+  apply int.lcms_nonneg, apply h2, refl, refl,
+  rewrite subst_prsv, simp, apply hlb1, apply hf,
   apply hlb2, rewrite sub_lt_self_iff,
   apply pos_divisors_lcm, apply hn,
   simp, apply hlb1
@@ -1093,7 +1179,7 @@ begin
   rewrite eq.symm (mul_assoc _ k z),
   rewrite int.div_mul_comm lcm _ k,
   rewrite int.mul_div_assoc,
-  rewrite int.div_abs_self,
+  rewrite eq.symm (int.sign_eq_div_abs _), --int.div_abs_self,
   rewrite mul_comm lcm (int.sign k), simp,
   rewrite mul_assoc, rewrite int.abs_dvd,
   apply dvd_refl, apply hdvd,
@@ -1326,7 +1412,7 @@ begin
   apply hcso_prsv p hf hn bs, 
   apply nqfree_hcso_of_nqfree p hf,
   apply hd_coeffs_one_normal_prsv _ hn,
-  apply unified_hd_coeffs_one
+  apply unified_hd_coeffs_one, apply hf
 end
 
 lemma qe_cooper_prsv : 
@@ -1335,5 +1421,3 @@ lemma qe_cooper_prsv :
     sqe_cooper_normal_prsv 
     qfree_sqe_cooper_of_nqfree 
     sqe_cooper_prsv
-    
-  

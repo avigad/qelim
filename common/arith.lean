@@ -2,6 +2,9 @@ import .nat ...mathlib.data.int.basic
 
 namespace int
 
+lemma abs_dvd (x y : int) : has_dvd.dvd (abs x) y ↔ has_dvd.dvd x y :=
+begin rewrite abs_eq_nat_abs, apply nat_abs_dvd end
+
 lemma mul_nonzero {z y : int} : z ≠ 0 → y ≠ 0 → z * y ≠ 0 := 
 begin
   intros hm hn hc, apply hm,
@@ -18,7 +21,7 @@ begin
   rewrite hc, apply zero_mul,
 end
 
-lemma nat_abs_neq_zero (z : int) : z ≠ 0 → int.nat_abs z ≠ 0 := 
+lemma nat_abs_nonzero (z : int) : z ≠ 0 → int.nat_abs z ≠ 0 := 
 begin
   intro hz, cases z with n n, simp,
   apply nat.neq_zero_of_of_nat_neq_zero hz,
@@ -62,10 +65,19 @@ def lcms : list int → int
 | [] := 1 
 | (z::zs) := lcm z (lcms zs)
 
-lemma dvd_lcm_left : ∀ (x y : int), has_dvd.dvd x (lcm x y) := sorry
+lemma dvd_lcm_left : ∀ (x y : int), has_dvd.dvd x (lcm x y) := 
+begin
+  intros x y, unfold lcm, rewrite iff.symm (abs_dvd _ _),
+  rewrite abs_eq_nat_abs, rewrite coe_nat_dvd,
+  apply nat.dvd_lcm_left
+end
 
-lemma dvd_lcm_right : ∀ (x y : int), has_dvd.dvd y (lcm x y) := sorry
-
+lemma dvd_lcm_right : ∀ (x y : int), has_dvd.dvd y (lcm x y) :=
+begin
+  intros x y, unfold lcm, rewrite iff.symm (abs_dvd _ _),
+  rewrite abs_eq_nat_abs, rewrite coe_nat_dvd,
+  apply nat.dvd_lcm_right
+end
 lemma dvd_lcms {x : int} : ∀ {zs : list int}, x ∈ zs → has_dvd.dvd x (lcms zs) 
 | [] hm := by cases hm
 | (z::zs) hm := 
@@ -77,7 +89,8 @@ lemma dvd_lcms {x : int} : ∀ {zs : list int}, x ∈ zs → has_dvd.dvd x (lcms
     apply dvd_lcm_right, 
   end
 
-lemma nonzero_of_pos {z : int} : z > 0 → z ≠ 0 := sorry
+lemma nonzero_of_pos {z : int} : z > 0 → z ≠ 0 := 
+begin intros hgt heq, subst heq, cases hgt end
 
 lemma lcm_nonneg (x y : int) : lcm x y ≥ 0 := 
 by unfold lcm
@@ -86,7 +99,14 @@ lemma lcms_nonneg : ∀ (zs : list int), lcms zs ≥ 0
 | [] := by unfold lcms 
 | (z::zs) := by unfold lcms
 
-lemma lcm_pos (x y : int) : x ≠ 0 → y ≠ 0 → lcm x y > 0 := sorry
+lemma lcm_pos (x y : int) : x ≠ 0 → y ≠ 0 → lcm x y > 0 := 
+begin
+  intros hx hy, unfold lcm, unfold gt,
+  rewrite coe_nat_pos, 
+  let h := @nat.pos_iff_ne_zero, unfold gt at h,
+  rewrite h, apply nat.lcm_nonzero;
+  apply nat_abs_nonzero; assumption
+end
 
 lemma lcms_pos : ∀ {zs : list int}, (∀ z : int, z ∈ zs → z ≠ 0) → lcms zs > 0
 | [] _ := coe_succ_pos _
@@ -128,11 +148,17 @@ begin
   apply list.mem_union_right _ hz
 end
 
-lemma dvd_of_mul_dvd_mul_left : ∀ {x y z : int}, 
-  z ≠ 0 → has_dvd.dvd (z * x) (z * y) → has_dvd.dvd x y := sorry
+-- lemma dvd_of_mul_dvd_mul_left : ∀ {x y z : int}, 
+--   z ≠ 0 → has_dvd.dvd (z * x) (z * y) → has_dvd.dvd x y := sorry
 
-  lemma eq_zero_of_not_gt_zero_of_not_lt_zero (z : int) :
-  (¬ z < 0) → (¬ z > 0) → z = 0 := sorry
+lemma eq_zero_of_nonpos_of_nonzero (z : int) :
+(¬ z < 0) → (¬ z > 0) → z = 0 := 
+begin
+  cases (lt_trichotomy z 0) with h h,
+  intro hc, cases (hc h),
+  cases h with h h, intros _ _, apply h,
+  intros _ hc, cases (hc h)
+end
 
 lemma sign_split (z) : 
   sign z = -1 ∨ sign z = 0 ∨ sign z = 1 :=
@@ -143,24 +169,23 @@ begin
   apply or.inl rfl
 end
 
-lemma neq_zero_of_gt_zero (z : int) :
-  z > 0 → z ≠ 0 := sorry
-
-lemma lt_add_of_pos (k z : int) : 0 < k → z < z + k := sorry
-
-
-lemma abs_neq_zero_of_neq_zero {z : int} (h : z ≠ 0) : abs z ≠ 0 :=
-begin
-  intro hc, apply h, apply eq_zero_of_abs_eq_zero, apply hc
-end
-
-lemma sign_neq_zero_of_neq_zero {z : int} (h : z ≠ 0) : sign z ≠ 0 :=
-sorry
+-- lemma abs_neq_zero_of_neq_zero {z : int} (h : z ≠ 0) : abs z ≠ 0 :=
+-- begin
+--   intro hc, apply h, apply eq_zero_of_abs_eq_zero, apply hc
+-- end
 
 lemma mul_le_mul_iff_le_of_pos_left (x y z : int) :
-  z > 0 → (z * x ≤ z * y ↔ x ≤ y) := sorry
-
-
+  z > 0 → (z * x ≤ z * y ↔ x ≤ y) := 
+begin
+  intro hz, apply iff.intro; intro h,
+  let h' := @int.div_le_div _ _ z hz h,
+  repeat {rewrite mul_comm z at h',
+  rewrite int.mul_div_cancel _ (nonzero_of_pos hz) at h'},
+  apply h', repeat {rewrite mul_comm z},
+  apply int.mul_le_of_le_div hz, 
+  rewrite int.mul_div_cancel _ (nonzero_of_pos hz),
+  apply h 
+end
 
 lemma mul_le_mul_iff_le_of_neg_left (x y z : int) :
   z < 0 → (z * x ≤ z * y ↔ y ≤ x) := 
@@ -174,27 +199,39 @@ begin
 end
 
 lemma dvd_iff_exists (x y) :
-  has_dvd.dvd x y ↔ ∃ (z : int), z * x = y := sorry
+  has_dvd.dvd x y ↔ ∃ (z : int), z * x = y := 
+begin
+  apply iff.intro; intro h, 
+  existsi (y / x), apply int.div_mul_cancel h,
+  cases h with z hz, subst hz, 
+  apply dvd_mul_left
+end
 
-lemma sign_eq_abs_div (a : ℤ) : sign a = (abs a) / a := sorry
-
-lemma div_abs_self (z) : has_div.div z (abs z) = sign z := sorry
-
-lemma sign_self_mul (z : int) : int.sign z * z = abs z := sorry
-
-lemma div_mul_comm (x y z : int) : has_dvd.dvd y x → (x / y) * z = x * z / y := sorry
-
-lemma abs_dvd (x y : int) : has_dvd.dvd (abs x) y ↔ has_dvd.dvd x y := sorry
-
-lemma exists_nat_diff (x y : int) (n : nat) :
-  x ≤ y → y < x + int.of_nat n → ∃ (m : nat), m < n ∧ y = x + int.of_nat m := sorry
+lemma div_mul_comm (x y z : int) : has_dvd.dvd y x → (x / y) * z = x * z / y := 
+begin
+  intro h, rewrite mul_comm x, 
+  rewrite int.mul_div_assoc _ h, rewrite mul_comm,
+end
 
 lemma nonneg_iff_exists (z : int) :
-  0 ≤ z ↔ ∃ (n : nat), z = int.of_nat n :=
+  0 ≤ z ↔ ∃ (n : nat), z = ↑n :=
 begin
   cases z with m m, apply true_iff_true, constructor,
   existsi m, refl, apply false_iff_false; intro hc,
   cases hc, cases hc with m hm, cases hm
+end
+
+lemma exists_nat_diff (x y : int) (n : nat) :
+  x ≤ y → y < x + ↑n → ∃ (m : nat), m < n ∧ y = x + ↑m := 
+begin
+  intros hxy hyx, 
+  rewrite iff.symm (sub_nonneg) at hxy,
+  rewrite nonneg_iff_exists at hxy, 
+  cases hxy with m hm, existsi m,
+  rewrite iff.symm sub_lt_iff_lt_add' at hyx,
+  apply and.intro, rewrite iff.symm coe_nat_lt,
+  rewrite eq.symm hm, apply hyx,
+  rewrite eq.symm hm, rewrite add_sub, simp,
 end
 
 lemma exists_lt_and_lt (x y : int) :

@@ -423,7 +423,38 @@ lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β 
   begin unfold map_fm, unfold atoms, apply list.forall_mem_nil end
 
 lemma atoms_map_fm [decidable_eq α] [decidable_eq β] (f : α → β) :
-  ∀ (p : fm α), atoms (map_fm f p) = list.map f (atoms p) := sorry
+  ∀ (p : fm α), nqfree p → list.equiv (atoms (map_fm f p)) (list.map f (atoms p))
+| ⊤' _ := by apply list.equiv.refl
+| ⊥' _ := by apply list.equiv.refl
+| (A' a) _ := by apply list.equiv.refl
+| (p ∧' q) hf :=
+  begin
+    cases hf with hfp hfq, unfold map_fm,
+    unfold atoms, apply list.equiv.trans,
+    apply list.union_equiv_union_of_equiv 
+      (atoms_map_fm p hfp),
+    apply list.equiv.trans list.union_comm,
+    apply list.equiv.trans,
+    apply list.union_equiv_union_of_equiv
+      (atoms_map_fm q hfq),
+    apply list.equiv.trans list.union_comm,
+    apply list.equiv.symm, apply list.map_union
+  end 
+| (p ∨' q) hf := 
+  begin
+    cases hf with hfp hfq, unfold map_fm,
+    unfold atoms, apply list.equiv.trans,
+    apply list.union_equiv_union_of_equiv 
+      (atoms_map_fm p hfp),
+    apply list.equiv.trans list.union_comm,
+    apply list.equiv.trans,
+    apply list.union_equiv_union_of_equiv
+      (atoms_map_fm q hfq),
+    apply list.equiv.trans list.union_comm,
+    apply list.equiv.symm, apply list.map_union
+  end 
+| (¬' p) hf := by cases hf
+| (∃' p) hf := by cases hf 
 
 def interp (h : list β → α → Prop) : list β → fm α → Prop 
 | xs ⊤' := true

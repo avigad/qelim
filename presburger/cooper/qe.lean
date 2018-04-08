@@ -43,8 +43,6 @@ def inf_minus : fm atom → fm atom
 
 def subst (i ks p) := map_fm (asubst i ks) p
 
-lemma subst_prsv (i ks xs) : 
-  ∀ p, I (subst i ks p) xs ↔ I p ((i + list.dot_prod ks xs)::xs) := sorry 
 
 def get_lb : atom → option (int × list int) 
 | (atom.le i (k::ks)) :=
@@ -59,7 +57,20 @@ def bnd_points (p) :=
 def list.irange (z : int) : list int :=
 list.map int.of_nat (list.range (int.nat_abs z))
 
-lemma list.mem_irange (z y) : 0 ≤ z → z < y → z ∈ list.irange y := sorry
+lemma list.mem_irange (z y : int) : 
+  0 ≤ z → 0 ≤ y → z < y → z ∈ list.irange y := 
+begin
+  intros hz hy hzy, unfold list.irange,
+  rewrite list.mem_map, 
+  rewrite int.nonneg_iff_exists at hz,
+  cases hz with n hn, subst hn, existsi n,
+  apply and.intro _ rfl,
+  rewrite list.mem_range, 
+  rewrite iff.symm int.coe_nat_lt,
+  have heq : ↑(int.nat_abs y) = int.of_nat (int.nat_abs y),
+  refl, rewrite heq,
+  rewrite int.of_nat_nat_abs_eq_of_nonneg hy, apply hzy,
+end
 
 def qe_cooper_one (p : fm atom) : fm atom := 
   let as := atoms_dep0 int p in 

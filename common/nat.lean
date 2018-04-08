@@ -85,9 +85,6 @@ begin
   intros _ hc, cases hc 
 end
 
--- def lcms : list nat → nat 
--- | [] := 1
--- | (n::ns) := nat.lcm n (lcms ns)
 
 end nat
 

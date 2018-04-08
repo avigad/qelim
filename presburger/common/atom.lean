@@ -72,21 +72,12 @@ meta def decr_prsv_aux : tactic unit :=
 `[unfold decr, unfold val, 
   cases ks with k ks, 
   simp, repeat {rewrite nil_dot_prod},
-
-  unfold dep0 at h, 
-  unfold hd_coeff at h, 
+  unfold dep0 at h, unfold hd_coeff at h, 
   unfold list.head_dft at h, 
   have h' := classical.by_contradiction h, 
-  clear h, subst h',
-  
-  cases bs with b' bs', 
-  simp, rewrite dot_prod_nil,
-  rewrite cons_dot_prod_cons,
-  rewrite zero_mul, rewrite zero_add, 
-  rewrite dot_prod_nil, 
-
+  clear h, subst h', cases bs with b' bs', 
   simp, rewrite cons_dot_prod_cons,
-  rewrite zero_mul, rewrite zero_add]
+  rewrite zero_mul, rewrite zero_add, simp]
 
 lemma decr_prsv : ∀ (a : atom), ¬dep0 a → ∀ (b : ℤ) (bs : list ℤ), 
   val bs (decr a) ↔ val (b :: bs) a
@@ -162,7 +153,6 @@ meta def asubst_prsv_tac :=
   rewrite cons_dot_prod_cons,
   rewrite mul_add, rewrite mul_comm, simp, 
   rewrite comp_add_dot_prod, 
-  rewrite map_mul_dot_prod,
   simp, rewrite mul_comm at he, rewrite he]
 
 meta def asubst_prsv_aux := 
@@ -175,15 +165,13 @@ lemma asubst_prsv (i' ks' xs) :
   begin
     unfold asubst, simp, unfold val, 
     rewrite add_le_iff_le_sub, simp, 
-
     have he : (i' * k + dot_prod (comp_add (map_mul k ks') ks) xs) 
                = (dot_prod (k :: ks) ((i' + dot_prod ks' xs) :: xs)),
-               
     rewrite cons_dot_prod_cons,
     rewrite mul_add, rewrite mul_comm, simp, 
     rewrite comp_add_dot_prod, 
-    rewrite map_mul_dot_prod,
-    simp, rewrite mul_comm at he, rewrite he
+    simp, rewrite mul_comm at he, 
+    simp at *, rewrite he
   end
 | (dvd d i (k::ks))  := by asubst_prsv_tac
 | (ndvd d i (k::ks)) := by asubst_prsv_tac

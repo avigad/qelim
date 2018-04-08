@@ -263,6 +263,12 @@ notation l1 `≃` l2 := equiv l1 l2
 def equiv.refl {l : list α} : l ≃ l := 
 and.intro (subset.refl _) (subset.refl _)
 
+def equiv.symm {as1 as2 : list α} : (as1 ≃ as2) → (as2 ≃ as1) :=
+begin
+  intro h, cases h with h1 h2, 
+  apply and.intro; assumption
+end 
+
 lemma equiv.trans {l1 l2 l3 : list α} : (l1 ≃ l2) → (l2 ≃ l3) → (l1 ≃ l3) :=  
 begin
   intros h1 h2,
@@ -335,6 +341,31 @@ begin
   apply and.intro; 
   apply map_subset_map_of_subset; assumption
 end 
+
+lemma union_subset_union_of_subset [decidable_eq α]
+  {as1 as1' as2 : list α} : (as1 ⊆ as1') → (as1 ∪ as2 ⊆ as1' ∪ as2) :=
+begin
+  intros h a ha, rewrite mem_union at ha,
+  cases ha with ha ha, 
+  apply mem_union_left, apply h ha,
+  apply mem_union_right, apply ha
+end
+
+lemma union_equiv_union_of_equiv [decidable_eq α]
+  {as1 as1' as2 : list α} : (as1 ≃ as1') → (as1 ∪ as2 ≃ as1' ∪ as2) :=
+begin
+  intro h, cases h with h1 h2,
+  apply and.intro; 
+  apply union_subset_union_of_subset; assumption
+end
+
+lemma union_comm [decidable_eq α]
+ {as1 as2 : list α} : (as1 ∪ as2 ≃ as2 ∪ as1) :=
+begin
+  apply and.intro; intros a ha;
+  rewrite mem_union at ha; cases ha with ha ha;
+  {apply mem_union_left ha <|> apply mem_union_right _ ha}
+end
 
 lemma filter_union [decidable_eq α]
   {P : α → Prop} [decidable_pred P]
@@ -627,7 +658,9 @@ lemma allp_iff_forall_mem (P : α → Prop) (as : list α) :
   (allp P as) ↔ (∀ a ∈ as, P a) :=
 by unfold allp
 
-
-lemma map_one_mul [monoid α] (l : list α) : map (has_mul.mul (1 : α)) l = l := sorry
+lemma map_one_mul [monoid α] : 
+  ∀ (l : list α), map (has_mul.mul (1 : α)) l = l 
+| [] := refl _
+| (a::as) := begin simp, apply map_one_mul end
 
 end list
