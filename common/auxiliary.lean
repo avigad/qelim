@@ -141,7 +141,6 @@ list.map (λ x, -x) l
 
 open tactic
 
-
 meta def split_em (p : Prop) : tactic unit := 
 `[cases (classical.em p)]
 

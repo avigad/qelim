@@ -21,7 +21,7 @@ def coeffs_lcm (p) :=
   int.lcms (list.map hd_coeff (atoms_dep0 int p))
 
 def divisors_lcm (p) := 
-  int.lcms (list.map divisor (atoms_dep0 ℤ p))
+  int.lcms (list.map divisor (atoms_dep0 int p))
 
 def hd_coeffs_one (p : fm atom) : fm atom := 
 A' (atom.dvd (coeffs_lcm p) 0 [1]) ∧' (map_fm (hd_coeff_one (coeffs_lcm p)) p)

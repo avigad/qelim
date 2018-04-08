@@ -160,6 +160,19 @@ sorry
 lemma mul_le_mul_iff_le_of_pos_left (x y z : int) :
   z > 0 → (z * x ≤ z * y ↔ x ≤ y) := sorry
 
+
+
+lemma mul_le_mul_iff_le_of_neg_left (x y z : int) :
+  z < 0 → (z * x ≤ z * y ↔ y ≤ x) := 
+begin
+  intros hz,
+  rewrite eq.symm (neg_neg z),
+  repeat {rewrite eq.symm (neg_mul_eq_neg_mul (-z) _)},
+  rewrite neg_le_neg_iff,
+  apply mul_le_mul_iff_le_of_pos_left,
+  unfold gt, rewrite lt_neg, apply hz
+end
+
 lemma dvd_iff_exists (x y) :
   has_dvd.dvd x y ↔ ∃ (z : int), z * x = y := sorry
 
@@ -203,6 +216,15 @@ begin
   let h := mul_le_mul hx' (le_refl y) hy _,
   rewrite one_mul at h, apply h, 
   apply le_of_lt hx
+end
+
+lemma lt_mul_of_nonneg_right : ∀ {x y z : int}, x < y → y ≥ 0 → z > 0 → x < y * z :=
+begin
+  intros x y z hxy hy hz,
+  have h := @mul_lt_mul _ _ x 1 y z hxy,
+  rewrite mul_one at h, apply h,
+  apply add_one_le_of_lt hz, 
+  apply int.zero_lt_one, apply hy
 end
 
 end int

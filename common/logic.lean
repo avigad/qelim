@@ -422,9 +422,8 @@ lemma map_fm_prsv [decidable_eq α] [decidable_eq β] (P : α → Prop) {Q : β 
 | (∃' p) h := 
   begin unfold map_fm, unfold atoms, apply list.forall_mem_nil end
 
-lemma atoms_map_fm [decidable_eq α] [decidable_eq β] 
-(f : α → β) (p : fm α) : 
-  atoms (map_fm f p) = list.map f (atoms p) := sorry
+lemma atoms_map_fm [decidable_eq α] [decidable_eq β] (f : α → β) :
+  ∀ (p : fm α), atoms (map_fm f p) = list.map f (atoms p) := sorry
 
 def interp (h : list β → α → Prop) : list β → fm α → Prop 
 | xs ⊤' := true

@@ -11,6 +11,13 @@ lemma I_atom_dvd (d i ks zs) :
 lemma I_atom_ndvd (d i ks zs) : 
   I (A' (atom.ndvd d i ks)) zs ↔ ¬ (has_dvd.dvd d (i + list.dot_prod ks zs)) := iff.refl _
 
+lemma I_atom_ndvd' (d i : int) (ks zs : list int) :
+   I (A' (atom.ndvd d i ks)) zs ↔ ¬ I (A' (atom.dvd d i ks)) zs :=
+begin
+  unfold I, unfold interp,
+  unfold atom_type.val, unfold val
+end 
+
 meta def atom_dep0_split :=
 `[cases ks with k' ks', 
   apply or.inl, apply not_not_intro rfl,
@@ -575,60 +582,235 @@ lemma coeffs_lcm_atom_ndvd {d i k : int} {ks : list int} :
   k ≠ 0 → coeffs_lcm (A' (atom.ndvd d i (k::ks))) = abs k := 
 by coeffs_lcm_atom_tac
 
-lemma coeffs_lcm_and (p q) :
-  coeffs_lcm (p ∧' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := 
-begin
-  apply int.lcms_distrib, 
+meta def divisors_lcm_atom_tac :=
+`[intro hk,
+  unfold divisors_lcm, unfold atoms_dep0,
+  unfold atoms, unfold list.filter,
+  rewrite ite_true, unfold list.map, 
+  unfold divisor, unfold int.lcms,
+  apply int.lcm_one_right, apply hk]
+
+lemma divisors_lcm_atom_dvd {d i k : int} {ks : list int} :
+  k ≠ 0 → divisors_lcm (A' (atom.dvd d i (k::ks))) = abs d := 
+by divisors_lcm_atom_tac
+
+lemma divisors_lcm_atom_ndvd {d i k : int} {ks : list int} :
+  k ≠ 0 → divisors_lcm (A' (atom.ndvd d i (k::ks))) = abs d := 
+by divisors_lcm_atom_tac
+
+meta def lcm_distrib_tac :=
+`[apply int.lcms_distrib, 
   apply list.equiv.trans, 
   apply list.map_equiv_map_of_equiv,
   apply list.filter_union,
-  apply list.map_union
-end
+  apply list.map_union]
+
+lemma coeffs_lcm_and (p q) :
+  coeffs_lcm (p ∧' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := 
+by lcm_distrib_tac
 
 lemma coeffs_lcm_or (p q) :
   coeffs_lcm (p ∨' q) = int.lcm (coeffs_lcm p) (coeffs_lcm q) := 
-begin
-  apply int.lcms_distrib, 
-  apply list.equiv.trans, 
-  apply list.map_equiv_map_of_equiv,
-  apply list.filter_union,
-  apply list.map_union
-end
+by lcm_distrib_tac
+
+lemma divisors_lcm_and (p q) :
+  divisors_lcm (p ∧' q) = int.lcm (divisors_lcm p) (divisors_lcm q) := 
+by lcm_distrib_tac
+
+lemma divisors_lcm_or (p q) :
+  divisors_lcm (p ∨' q) = int.lcm (divisors_lcm p) (divisors_lcm q) := 
+by lcm_distrib_tac
 
 lemma coeffs_lcm_pos (p) :
-  coeffs_lcm p > 0 := sorry
-  
-lemma no_lb_inf_minus (p : fm atom) (z : int) (zs) :
-  I (inf_minus p) (z::zs) 
-  → ∀ y, ∃ x, (x < y ∧ I (inf_minus p) (x::zs)) := sorry
+  coeffs_lcm p > 0 := 
+begin
+  apply int.lcms_pos,
+  intros z hz, rewrite list.mem_map at hz,
+  cases hz with a ha, cases ha with ha1 ha2,
+  subst ha2, unfold atoms_dep0 at ha1,
+  rewrite list.mem_filter at ha1,
+  apply ha1^.elim_right
+end
 
-lemma inf_minus_mod : 
-  ∀ p z bs, 
-  (I (inf_minus p) (z :: bs)) ↔ 
-  (I (inf_minus p) (int.mod z (divisors_lcm p) :: bs)) := sorry
+lemma divisors_lcm_pos (p) :
+  fnormal int p → divisors_lcm p > 0 := 
+begin
+  intro hn, apply int.lcms_pos,
+  intros z hz, rewrite list.mem_map at hz,
+  cases hz with a ha, cases ha with ha1 ha2,
+  subst ha2, unfold atoms_dep0 at ha1,
+  rewrite list.mem_filter at ha1,
+  rewrite fnormal_iff_fnormal_alt at hn,
+  rewrite iff.symm normal_iff_divisor_nonzero,
+  apply hn, apply ha1^.elim_left
+end
 
-lemma atom_dvd_mod : 
-  ∀ d i ks z zs, 
-  (I (A' (atom.dvd d i ks)) (z :: zs)) ↔ 
-  (I (A' (atom.dvd d i ks)) (int.mod z d :: zs)) := sorry
+lemma atom_dvd_mod (m d i ks z zs) :
+  has_dvd.dvd d m → 
+  ((I (A' (atom.dvd d i ks)) (z :: zs)) ↔ 
+   (I (A' (atom.dvd d i ks)) (z % m :: zs))) := 
+begin
+  intro hdvd,
+  repeat {rewrite I_atom_dvd},  
+  cases ks with k ks; simp,
+  repeat {rewrite add_comm i},
+  repeat {rewrite (add_assoc)},
+  apply iff.symm, apply iff.trans,
+  apply (@dvd_add_iff_right _ _ _ (k * (z - z % m))),
+  apply dvd_mul_of_dvd_right, 
+  rewrite int.mod_def, 
+  rewrite eq.symm (sub_add _ _ _), simp,
+  apply dvd_mul_of_dvd_left, apply hdvd,
+  rewrite add_comm, rewrite add_assoc,
+  rewrite add_comm _ i,
+  rewrite add_assoc,
+  rewrite eq.symm (mul_add _ _ _),
+  rewrite add_comm (z % m),
+  rewrite sub_add_cancel, simp
+end
 
-lemma atom_ndvd_mod : 
-  ∀ d i ks z zs, 
-  (I (A' (atom.ndvd d i ks)) (z :: zs)) ↔ 
-  (I (A' (atom.ndvd d i ks)) (int.mod z d :: zs)) := sorry
+lemma atom_ndvd_mod (m d i ks z zs) : 
+  has_dvd.dvd d m → 
+  ((I (A' (atom.ndvd d i ks)) (z :: zs)) ↔ 
+   (I (A' (atom.ndvd d i ks)) (z % m :: zs))) := 
+begin
+  intro hdvd,
+  repeat {rewrite I_atom_ndvd'},
+  rewrite atom_dvd_mod, apply hdvd
+end
 
 lemma divisors_lcm_dvd_and_left (p q) : 
-  has_dvd.dvd (divisors_lcm p) (divisors_lcm (p ∧' q)) := sorry
+  has_dvd.dvd (divisors_lcm p) (divisors_lcm (p ∧'  q)) := 
+begin
+  rewrite divisors_lcm_and,
+  apply int.dvd_lcm_left
+end
 
 lemma divisors_lcm_dvd_and_right (p q) : 
-  has_dvd.dvd (divisors_lcm q) (divisors_lcm (p ∧' q)) := sorry
+  has_dvd.dvd (divisors_lcm q) (divisors_lcm (p ∧' q)) := 
+begin
+  rewrite divisors_lcm_and,
+  apply int.dvd_lcm_right
+end
 
-lemma mod_add_eq_mod (i j k) : (has_dvd.dvd k j) → int.mod (i + j) k = int.mod i k := sorry
+lemma inf_minus_mod (k z zs) : 
+  ∀ p, nqfree p → (has_dvd.dvd (divisors_lcm p) k)
+    → ((I (inf_minus p) (z :: zs)) 
+       ↔ (I (inf_minus p) (z % k :: zs)))
+| ⊤' _ _ := begin apply true_iff_true; trivial end
+| ⊥' _ _ := begin apply false_iff_false; intro hc; cases hc end
+| (A' (atom.le i [])) hf hdvd := 
+  begin
+    unfold inf_minus, repeat {rewrite I_not_dep0},
+    repeat {apply not_not_intro, refl}
+  end
+| (A' (atom.le i (k'::ks'))) hf hdvd := 
+  begin
+    cases (lt_trichotomy k' 0) with hlt heqgt;
+    unfold inf_minus, rewrite ite_true,
+    apply true_iff_true; trivial, apply hlt,
+    cases heqgt with heq hgt, subst heq,
+    rewrite ite_false, rewrite ite_false, 
+    repeat {rewrite I_not_dep0},
+    repeat {apply not_not_intro, refl},
+    simp, simp, 
+    rewrite ite_false, rewrite ite_true, 
+    apply false_iff_false; intro hc; cases hc,
+    apply hgt, rewrite not_lt, apply le_of_lt hgt
+  end
+| (A' (atom.dvd d i ks)) hf hdvd := 
+  begin
+    cases (dvd_dep0_split d i ks) with hd0 hd0,
+    unfold inf_minus, repeat {rewrite I_not_dep0},
+    assumption, assumption,
+    cases hd0 with k' hk', cases hk' with ks' hks',
+    cases hks' with h1 h2, subst h2,
+    rewrite divisors_lcm_atom_dvd at hdvd,
+    rewrite int.abs_dvd at hdvd, 
+    apply atom_dvd_mod, apply hdvd, apply h1
+  end
+| (A' (atom.ndvd d i ks)) hf hdvd := 
+  begin
+    cases (ndvd_dep0_split d i ks) with hd0 hd0,
+    unfold inf_minus,  repeat {rewrite I_not_dep0},
+    assumption, assumption,
+    cases hd0 with k' hk', cases hk' with ks' hks',
+    cases hks' with h1 h2, subst h2,
+    rewrite divisors_lcm_atom_ndvd at hdvd,
+    rewrite int.abs_dvd at hdvd, 
+    apply atom_ndvd_mod, apply hdvd, apply h1
+  end
+| (p ∧' q) hf hdvd := 
+  begin
+    cases hf with hfp hfq,
+    unfold inf_minus,
+    repeat {rewrite exp_I_and_o},
+    repeat {rewrite inf_minus_mod; try {assumption}},
+    apply dvd.trans _ hdvd,
+    apply divisors_lcm_dvd_and_right,
+    apply dvd.trans _ hdvd,
+    apply divisors_lcm_dvd_and_left
+  end
+| (p ∨' q) hf hdvd := 
+  begin
+    cases hf with hfp hfq,
+    unfold inf_minus,
+    repeat {rewrite exp_I_or_o},
+    repeat {rewrite inf_minus_mod; try {assumption}},
+    apply dvd.trans _ hdvd,
+    apply divisors_lcm_dvd_and_right,
+    apply dvd.trans _ hdvd,
+    apply divisors_lcm_dvd_and_left
+  end
+| (¬' p) hf _ := by cases hf
+| (∃' p) hf _ := by cases hf
+
+lemma no_lb_inf_minus (p : fm atom) (hf : nqfree p)
+  (hn : fnormal int p) (z : int) (zs) : I (inf_minus p) (z::zs) 
+  → ∀ y, ∃ x, (x < y ∧ I (inf_minus p) (x::zs)) := 
+begin
+  intros h y, cases lt_or_le z y with hlt hle,
+  existsi z, apply and.intro; assumption,
+  have hw : ∃ (w : int), z < y + (w * divisors_lcm p),
+  existsi (z - y + 1),
+  rewrite iff.symm sub_lt_iff_lt_add',
+  apply int.lt_mul_of_nonneg_right,
+  rewrite int.lt_add_one_iff,
+  rewrite iff.symm sub_nonneg at hle,
+  apply le_trans hle, 
+  apply le_of_lt, rewrite int.lt_add_one_iff,
+  apply divisors_lcm_pos _ hn,
+  cases hw with w hw,
+  rewrite iff.symm sub_lt_iff_lt_add at hw,
+  existsi (z - w * divisors_lcm p),
+  apply and.intro hw, 
+  rewrite inf_minus_mod (divisors_lcm p),
+  rewrite inf_minus_mod (divisors_lcm p) at h,
+  rewrite (sub_eq_add_neg _ _),
+  rewrite neg_mul_eq_neg_mul,
+  rewrite int.add_mul_mod_self, apply h,
+  repeat {assumption <|> apply dvd_refl}
+end
+
+lemma mod_add_eq_mod (i j k : int) : (has_dvd.dvd k j) → (i + j) % k = i % k := 
+begin
+  intro hdvd, rewrite int.dvd_iff_exists at hdvd,
+  cases hdvd with z hz, subst hz,
+  rewrite int.add_mul_mod_self
+end
 
 lemma le_hd_coeff_decr {y z i k : int} {zs ks : list int} :
 k < 0 → y < z 
 → I (A' atom.le i (k :: ks)) (z :: zs)
-→ I (A' atom.le i (k :: ks)) (y :: zs) := sorry
+→ I (A' atom.le i (k :: ks)) (y :: zs) := 
+begin
+  intros hk hyz h,
+  rewrite I_atom_le at *, simp at *,
+  apply le_trans h,
+  rewrite add_le_add_iff_right,
+  rewrite int.mul_le_mul_iff_le_of_neg_left,
+  apply le_of_lt hyz, apply hk
+end
 
 lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
 ∀ (p : fm atom), nqfree p → fnormal ℤ p → unified p 
@@ -706,8 +888,8 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     rewrite iff.symm (atom_type.decr_prsv atom int) at h2,
     exfalso, apply h1 h2, apply hdep, apply hdep,
 
-    rewrite atom_ndvd_mod at h1,
-    rewrite atom_ndvd_mod at h2,
+    rewrite atom_ndvd_mod d at h1,
+    rewrite atom_ndvd_mod d at h2,
     rewrite mod_add_eq_mod at h2,
     exfalso, apply h1 h2, 
     apply dvd.trans (int.dvd_lcms _) hk,
@@ -715,7 +897,7 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     existsi (atom.ndvd d i ks), apply and.intro,
     unfold atoms_dep0, rewrite list.mem_filter,
     apply and.intro, apply or.inl rfl,
-    apply hdep, refl
+    apply hdep, refl, apply dvd_refl, apply dvd_refl
   end
   | (A' (atom.dvd d i ks)) hf hn hu k _ hk h1 h2 := 
   begin
@@ -727,8 +909,8 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     rewrite iff.symm (atom_type.decr_prsv atom int) at h2,
     exfalso, apply h1 h2, apply hdep, apply hdep,
 
-    rewrite atom_dvd_mod at h1,
-    rewrite atom_dvd_mod at h2,
+    rewrite atom_dvd_mod d at h1,
+    rewrite atom_dvd_mod d at h2,
     rewrite mod_add_eq_mod at h2,
     exfalso, apply h1 h2, 
     apply dvd.trans (int.dvd_lcms _) hk,
@@ -736,7 +918,8 @@ lemma qe_cooper_one_prsv_lb (z : ℤ) (zs : list ℤ) :
     existsi (atom.dvd d i ks), apply and.intro,
     unfold atoms_dep0, rewrite list.mem_filter,
     apply and.intro, apply or.inl rfl,
-    apply hdep, refl
+    apply hdep, refl,
+    apply dvd_refl, apply dvd_refl
   end
 | (p ∨' q) hf hn hu k hkp hk h1 h2 := 
   begin
@@ -813,7 +996,7 @@ begin
   
   cases (inf_minus_prsv bs p) with lb hlb,
 
-  cases (no_lb_inf_minus p z bs hq2 lb) with x hx,
+  cases (no_lb_inf_minus p hf hn z bs hq2 lb) with x hx,
   cases hx with hx1 hx2, 
 
   rewrite (hlb x hx1) at hx2,
@@ -849,7 +1032,7 @@ begin
   apply pos_divisors_lcm, apply hn,
   rewrite subst_prsv, rewrite list.nil_dot_prod,
   rewrite add_zero, rewrite inf_minus_mod at hx2,
-  apply hx2,
+  apply hx2, apply hf, apply dvd_refl,
   cases h with lb hlb, cases hlb with hlb1 hlb2, 
   apply or.inr, 
 
