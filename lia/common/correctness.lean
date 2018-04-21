@@ -2,9 +2,9 @@ import .atom ...common.lnq ...common.ldq ...common.predicates
 
 variables {α β : Type}
 
-namespace pbgr
+namespace lia
 
-lemma down_closed_fnormal : @down_closed (pbgr.atom) (fnormal int)  
+lemma down_closed_fnormal : @down_closed (lia.atom) (fnormal int)  
 | ⊤' _ hd _ := by cases hd
 | ⊥' _ hd _ := by cases hd
 | (A' a) _ hd _ := by cases hd
@@ -15,7 +15,7 @@ lemma down_closed_fnormal : @down_closed (pbgr.atom) (fnormal int)
 | (¬' p) r hd hn := by {cases hd, apply hn}
 | (∃' p) r hd hn := by {cases hd, apply hn}
 
-lemma prop_up_closed_fnormal : @prop_up_closed (pbgr.atom) (fnormal int) 
+lemma prop_up_closed_fnormal : @prop_up_closed (lia.atom) (fnormal int) 
 | ⊤' := trivial
 | ⊥' := trivial
 | (A' a) := trivial
@@ -43,7 +43,7 @@ meta def nnf_closed_fnormal_aux :=
   cases (nnf_closed_fnormal_core hnq) with hnq1 hnq2,
   apply and.intro; apply and.intro; assumption]
 
-lemma nnf_closed_fnormal_core : ∀ {p : fm pbgr.atom}, 
+lemma nnf_closed_fnormal_core : ∀ {p : fm lia.atom}, 
   fnormal int p → fnormal int (nnf int p) ∧ fnormal int (nnf int (¬' p))
 | ⊤' hn := and.intro trivial trivial 
 | ⊥' hn := and.intro trivial trivial 
@@ -63,10 +63,10 @@ lemma nnf_closed_fnormal_core : ∀ {p : fm pbgr.atom},
 | (∃' p) hn := 
   begin unfold nnf, apply and.intro; trivial end
 
-lemma nnf_closed_fnormal : preserves (@nnf pbgr.atom int _) (fnormal int) := 
+lemma nnf_closed_fnormal : preserves (@nnf lia.atom int _) (fnormal int) := 
 λ p hn, (nnf_closed_fnormal_core hn)^.elim_left
 
-lemma atoms_and_o_subset {p q : fm pbgr.atom} : 
+lemma atoms_and_o_subset {p q : fm lia.atom} : 
   atoms (and_o p q) ⊆ atoms p ∪ atoms q := 
 begin
   apply cases_and_o' (λ p' q' r, atoms r ⊆ atoms p' ∪ atoms q') p q;
@@ -112,23 +112,23 @@ lemma lnq_closed_fnormal (f : fm atom → fm atom)
   end
 
 theorem lnq_prsv 
-  (qe : fm pbgr.atom → fm pbgr.atom) 
+  (qe : fm lia.atom → fm lia.atom) 
   (hqe : preserves qe (fnormal int))
   (hqf : qfree_res_of_nqfree_arg qe)
   (hi : ∀ p, nqfree p → fnormal int p → ∀ (bs : list int), I (qe p) bs ↔ ∃ b, (I p (b::bs))) : 
 ∀ p, fnormal int p → ∀ (bs : list int), I (lift_nnf_qe int qe p) bs ↔ I p bs :=
-@lnq_prsv_gen pbgr.atom int pbgr.atom_type 
+@lnq_prsv_gen lia.atom int lia.atom_type 
   qe hqf (fnormal int) down_closed_fnormal hqe 
   nnf_closed_fnormal lnq_closed_fnormal hi 
 
 theorem ldq_prsv 
-  (qe : list pbgr.atom → fm pbgr.atom) 
+  (qe : list lia.atom → fm lia.atom) 
   (hqf : ∀ as, (∀ a ∈ as, dep0 a) → qfree (qe as)) 
   (hn : ∀ as, (∀ a ∈ as, dep0 a) → (∀ a ∈ as, normal a) → fnormal int (qe as)) 
   (he : ∀ as, (∀ a ∈ as, dep0 a) → (∀ a ∈ as, normal a) → qe_prsv int qe as) :
   ∀ p, fnormal int p → ∀ (bs : list int), I (lift_dnf_qe int qe p) bs ↔ I p bs :=
-@ldq_prsv_gen pbgr.atom int pbgr.atom_type _ hqf hn he 
+@ldq_prsv_gen lia.atom int lia.atom_type _ hqf hn he 
 
-end pbgr
+end lia
 
 

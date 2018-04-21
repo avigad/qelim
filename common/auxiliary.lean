@@ -20,7 +20,8 @@ begin
   apply le_of_add_le_add_right h
 end
 
-lemma ite_true {p : Prop} [hd : decidable p] (h : p) (x y : α) : ite p x y = x := 
+
+lemma ite_eq_of {p : Prop} [hd : decidable p] (h : p) (x y : α) : ite p x y = x := 
 begin
   unfold ite, 
   tactic.unfreeze_local_instances, 
@@ -28,12 +29,28 @@ begin
   exfalso, apply hd h, simp
 end
 
-lemma ite_false {p : Prop} [hd : decidable p] (h : ¬ p) (x y : α) : ite p x y = y := 
+lemma ite_true (x y : α) : ite true x y = x := refl _
+
+lemma ite_eq_of_not {p : Prop} [hd : decidable p] (h : ¬ p) (x y : α) : ite p x y = y := 
 begin
   unfold ite, 
   tactic.unfreeze_local_instances, 
   cases hd with hd hd, simp, 
   exfalso, apply h hd
+end
+
+lemma ite_false (x y : α) : ite false x y = y := refl _
+
+
+lemma ite_not {p : Prop} [hd : decidable p] (x y : α) : ite (¬ p) x y = ite p y x :=
+begin
+  tactic.unfreeze_local_instances,
+  cases hd with h h,
+  rewrite @ite_eq_of _ _ (decidable.is_true h) h,
+  rewrite @ite_eq_of_not _ _ (decidable.is_false h) h,
+  rewrite @ite_eq_of _ _ (decidable.is_true h) h,
+  rewrite @ite_eq_of_not _ _ (decidable.is_false _) _,
+  apply not_not_intro h
 end
 
 lemma exp_forall_eq {P : α → Prop} {a' : α} : 
@@ -144,7 +161,6 @@ open tactic
 meta def split_em (p : Prop) : tactic unit := 
 `[cases (classical.em p)]
 
-
 meta def papply (pe : pexpr) := to_expr pe >>= apply  
 
 meta def intro_fresh : tactic expr :=
@@ -160,3 +176,7 @@ do t ← target,
 
 meta def papply_trans (pe : pexpr) := 
 do papply ``(eq.trans), papply pe
+
+meta def swap_goals : tactic unit :=
+do g1::g2::gs ← get_goals,
+   set_goals (g2::g1::gs)

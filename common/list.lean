@@ -3,9 +3,12 @@ import .auxiliary ...mathlib.data.list.basic
 variables {α β γ : Type}
 
 namespace list
--- def list.sum [has_zero α] [has_add α] : list α → α 
--- | [] := @has_zero.zero α _
--- | (a::as) := a + list.sum as
+
+def update_nth_force : list α → ℕ → α → α → list α
+| (x::xs) 0     a a' := a :: xs
+| (x::xs) (i+1) a a' := x :: update_nth_force xs i a a'
+| []      0     a a' := [a] 
+| []      (i+1) a a' := a' :: update_nth_force [] i a a'
 
 def zip_pad (a' b') : list α → list β → list (α × β)
 | [] [] := []
@@ -129,10 +132,11 @@ def neg_dot_prod [ring α] : ∀ (as1 as2 : list α),
 begin
   intros as1 as2,
   rewrite eq.symm (one_mul (dot_prod as1 as2)),
-  rewrite neg_mul_eq_neg_mul, simp
+  rewrite neg_mul_eq_neg_mul, simp,
 end
 
-
+lemma sum_exp [has_zero α] [has_add α] (as : list α) :
+  sum as = foldl (+) 0 as:= refl _
 
 --def omap (f : α → option β) : list α → list β  
 --| [] := []
@@ -247,12 +251,12 @@ def pluck (p : α → Prop) [decidable_pred p] : list α → option (α × list 
 
 def pluck_true (p : α → Prop) [decidable_pred p] (a as) (ha : p a) :
   pluck p (a::as) = some (a,as) := 
-begin unfold pluck, rewrite ite_true, apply ha end
+begin unfold pluck, rewrite ite_eq_of, apply ha end
 
 def pluck_false (p : α → Prop) [decidable_pred p] (a as) (ha : ¬ p a) :
   pluck p (a::as) 
   = (do (a',as') ← pluck p as, some (a',a::as') ) := 
-begin unfold pluck, rewrite ite_false, refl, apply ha end
+begin unfold pluck, rewrite ite_eq_of_not, refl, apply ha end
 
 /- equiv -/
 

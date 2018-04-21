@@ -52,6 +52,9 @@ variables {α β : Type}
 
 def I [atom_type α β] (p : fm α) (xs : list β) := interp (atom_type.val) xs p 
 
+lemma exp_I [atom_type α β] {p : fm α} {xs : list β} :    
+  I p xs = interp (atom_type.val) xs p := refl _
+
 lemma exp_I_and [atom_type α β] (p q : fm α) (xs : list β) : 
   I (p ∧' q) xs = ((I p xs) ∧ (I q xs)) := eq.refl _
 
@@ -109,6 +112,37 @@ def fnormal (β) [atom_type α β] : fm α → Prop
 | (p ∨' q) := fnormal p ∧ fnormal q
 | (¬' p) := fnormal p
 | (∃' p) := fnormal p
+
+instance dec_fnormal (β) [atom_type α β] : decidable_pred (@fnormal α β _) 
+| ⊤' := decidable.is_true trivial 
+| ⊥' := decidable.is_true trivial 
+| (A' a) := 
+  begin 
+    unfold fnormal,
+    apply atom_type.dec_normal α β
+  end
+| (p ∧' q) := 
+  begin
+    unfold fnormal, 
+    apply @and.decidable _ _ _ _;
+    apply dec_fnormal
+  end
+| (p ∨' q) :=
+  begin
+    unfold fnormal, 
+    apply @and.decidable _ _ _ _;
+    apply dec_fnormal
+  end
+| (¬' p) := 
+  begin
+    unfold fnormal, 
+    apply dec_fnormal
+  end
+| (∃' p) := 
+  begin
+    unfold fnormal, 
+    apply dec_fnormal
+  end
 
 lemma fnormal_iff_fnormal_alt [atom_type α β] : 
   ∀ {p : fm α}, fnormal β p ↔ fnormal_alt β p 

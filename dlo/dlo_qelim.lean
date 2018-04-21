@@ -107,7 +107,7 @@ begin
   unfold qe_prsv, intro bs, 
   unfold dlo_qe, unfold dlo_qe_aux, simp, 
   cases (@list.decidable_mem adlo (atom_type.dec_eq _ β) (0 <' 0) as) with Hc Hc,
-  rewrite (exp_ite_false), 
+  rewrite (exp_ite_eq_of_not), 
  
   have HW : allp is_b_atm as := 
   begin
@@ -118,7 +118,7 @@ begin
     apply Hc, subst HN, apply Ha'  
   end, clear Has, clear Hc, 
 
-  rewrite (exp_ite_true), 
+  rewrite (exp_ite_eq_of), 
   unfold function.comp, rewrite exp_I_list_conj,  
 
   apply @classical.by_cases (∃ m, is_lb m as) ; intro Hlb,
@@ -212,7 +212,7 @@ begin
   exfalso, apply Hub, existsi k, subst Hk, apply or.inl rfl, 
   apply HW, apply Hc, 
 
-  rewrite exp_ite_true, apply false_iff_false,
+  rewrite exp_ite_eq_of, apply false_iff_false,
   intro h, apply h, 
   intro h, cases h with b hb, 
   apply (lt_irrefl b), 

@@ -1,6 +1,6 @@
 import .qe
 
-open pbgr
+open lia
 
 lemma I_atom_le (i : int) (ks zs : list int) : 
   I (A' (atom.le i ks)) zs ↔ (i ≤ list.dot_prod ks zs) := iff.refl _
@@ -521,7 +521,7 @@ lemma inf_minus_prsv (zs) : ∀ (p : fm atom),
 
     existsi (- abs (i - list.dot_prod ks zs)), 
     intros z hz,
-    unfold inf_minus, rewrite ite_true,
+    unfold inf_minus, rewrite ite_eq_of,
     rewrite I_atom_le, simp,
     rewrite iff.symm sub_le_iff_le_add,
     apply true_iff_true, trivial,
@@ -537,13 +537,13 @@ lemma inf_minus_prsv (zs) : ∀ (p : fm atom),
 
     cases heqgt with heq hgt, subst heq,
     inf_minus_prsv_tac,
-    rewrite ite_false,
-    rewrite ite_false, intro hc, cases hc,
+    rewrite ite_eq_of_not,
+    rewrite ite_eq_of_not, intro hc, cases hc,
     intro hc, cases hc,
 
     existsi (- abs (i - list.dot_prod ks zs)),
     intros z hz, unfold inf_minus,
-    rewrite ite_false, rewrite ite_true,
+    rewrite ite_eq_of_not, rewrite ite_eq_of,
     rewrite I_atom_le, simp, 
     rewrite iff.symm sub_le_iff_le_add,
     apply false_iff_false, intro hc, cases hc,
@@ -616,7 +616,7 @@ end
 meta def coeffs_lcm_atom_tac :=
 `[intro hk, unfold coeffs_lcm,
   unfold atoms_dep0, unfold atoms,
-  unfold list.filter, rewrite ite_true,
+  unfold list.filter, rewrite ite_eq_of,
   unfold list.map, unfold hd_coeff, 
   unfold list.head_dft, unfold int.lcms,
   apply int.lcm_one_right, apply hk]
@@ -637,7 +637,7 @@ meta def divisors_lcm_atom_tac :=
 `[intro hk,
   unfold divisors_lcm, unfold atoms_dep0,
   unfold atoms, unfold list.filter,
-  rewrite ite_true, unfold list.map, 
+  rewrite ite_eq_of, unfold list.map, 
   unfold divisor, unfold int.lcms,
   apply int.lcm_one_right, apply hk]
 
@@ -758,14 +758,14 @@ lemma inf_minus_mod (k z zs) :
 | (A' (atom.le i (k'::ks'))) hf hdvd := 
   begin
     cases (lt_trichotomy k' 0) with hlt heqgt;
-    unfold inf_minus, rewrite ite_true,
+    unfold inf_minus, rewrite ite_eq_of,
     apply true_iff_true; trivial, apply hlt,
     cases heqgt with heq hgt, subst heq,
-    rewrite ite_false, rewrite ite_false, 
+    rewrite ite_eq_of_not, rewrite ite_eq_of_not, 
     repeat {rewrite I_not_dep0},
     repeat {apply not_not_intro, refl},
     simp, simp, 
-    rewrite ite_false, rewrite ite_true, 
+    rewrite ite_eq_of_not, rewrite ite_eq_of, 
     apply false_iff_false; intro hc; cases hc,
     apply hgt, rewrite not_lt, apply le_of_lt hgt
   end
@@ -1417,7 +1417,7 @@ end
 
 lemma qe_cooper_prsv : 
   ∀ p, fnormal int p → ∀ (bs : list int), I (qe_cooper p) bs ↔ I p bs :=
-  @pbgr.lnq_prsv sqe_cooper 
+  @lia.lnq_prsv sqe_cooper 
     sqe_cooper_normal_prsv 
     qfree_sqe_cooper_of_nqfree 
     sqe_cooper_prsv

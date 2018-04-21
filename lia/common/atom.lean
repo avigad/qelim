@@ -1,6 +1,6 @@
-import ...common.atom ...common.list
+import ...common.int ...common.atom ...common.list 
 
-namespace pbgr 
+namespace lia 
 
 open list
 
@@ -11,12 +11,38 @@ inductive atom : Type
 | dvd : int → int → list int → atom
 | ndvd : int → int → list int → atom
 
+-- | (atom.le i ks) := sorry
+-- | (atom.dvd d i ks) := sorry
+-- | (atom.ndvd d i ks) := sorry
+
+meta def coeffs_to_format : nat → list int → format 
+| _ [] := "_"
+| n [k] := to_fmt k ++ "x" ++ to_fmt n
+| n (k1::k2::ks) := to_fmt k1 ++ "x" ++ to_fmt n ++ " + " ++ coeffs_to_format (n+1) (k2::ks)
+
+meta def atom_to_format : atom → format 
+| (atom.le i ks) := to_fmt i ++ " ≤ " ++ coeffs_to_format 0 ks
+| (atom.dvd d i ks) := to_fmt d ++ " | " ++ to_fmt i ++ " + " ++ coeffs_to_format 0 ks
+| (atom.ndvd d i ks) := "¬(" ++ atom_to_format (atom.dvd d i ks) ++ ")"
+
+meta instance : has_to_format atom := 
+⟨atom_to_format⟩ 
+
+meta instance : has_to_tactic_format atom := 
+has_to_format_to_has_to_tactic_format _
+
+meta instance : has_reflect int :=
+by tactic.mk_has_reflect_instance 
+
+meta instance has_reflect_atom : has_reflect atom :=
+by tactic.mk_has_reflect_instance 
+
 instance dec_eq : decidable_eq atom := 
 by tactic.mk_dec_eq_instance
 
 open atom 
 
-def val : list int → atom →  Prop 
+def val : list int → atom → Prop 
 | xs (le i ks) := i ≤ list.dot_prod ks xs
 | xs (dvd d i ks) := has_dvd.dvd d (i + list.dot_prod ks xs)
 | xs (ndvd d i ks) := ¬ (has_dvd.dvd d (i + list.dot_prod ks xs))
@@ -180,4 +206,4 @@ lemma asubst_prsv (i' ks' xs) :
 | (ndvd d i []) := by asubst_prsv_aux
 
 
-end pbgr
+end lia

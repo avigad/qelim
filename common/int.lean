@@ -264,6 +264,31 @@ begin
   apply int.zero_lt_one, apply hy
 end
 
+lemma zero_mul (z : int) : 
+  int.of_nat 0 * z = 0 := 
+eq.trans (refl _) (zero_mul _)
+
+lemma mul_zero (z : int) : 
+  z * int.of_nat 0 = 0 := 
+eq.trans (refl _) (mul_zero _)
+
+lemma one_mul (z : int) : 
+  int.of_nat 1 * z = z := 
+eq.trans (refl _) (one_mul _)
+
+lemma neg_one_mul (z : int) : 
+  (int.neg_succ_of_nat 0) * z = -z := 
+eq.trans (refl _) (neg_one_mul _)
+
+lemma zero_add (z : int) : 
+  int.of_nat 0 + z = z := 
+eq.trans (refl _) (zero_add _)
+
+lemma coe_eq_of_nat {n : nat} :
+  ↑n = int.of_nat n := refl _
+
+lemma coe_neg_succ_eq_neg_succ_of_nat {n : nat} :
+  -↑(nat.succ n) = int.neg_succ_of_nat n := refl _
+
+
 end int
-
-

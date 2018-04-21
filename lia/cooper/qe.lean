@@ -1,21 +1,58 @@
-import ..common.correctness ...common.arith
+import ..common.correctness ...common.int
 
-open pbgr
+namespace lia
 
 def hd_coeff_one : int → atom → atom 
-| m (atom.le i (0::ks)) := (atom.le i (0::ks))   
 | m (atom.le i (k::ks)) := 
+  if k = 0 
+  then (atom.le i (0::ks))  
+  else let m' := has_div.div m (abs k) in 
+       atom.le (m' * i) (int.sign k :: list.map (λ x, m' * x) ks)
+| m (atom.dvd d i (k::ks)) :=
+  if k = 0 
+  then (atom.dvd d i (0::ks)) 
+  else let m' := has_div.div m k in 
+       atom.dvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
+| m (atom.ndvd d i (k::ks)) := 
+  if k = 0 
+  then (atom.ndvd d i (0::ks)) 
+  else let m' := has_div.div m k in 
+       atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
+| m (atom.le i []) := (atom.le i [])
+| m (atom.dvd d i []) := (atom.dvd d i []) 
+| m (atom.ndvd d i []) := (atom.ndvd d i []) 
+
+def hd_coeff_one' : int → atom → atom 
+| m (atom.le i (0::ks)) := (atom.le i (0::ks))   
+| m (atom.le i (int.of_nat (n+1) :: ks)) :=
+  let k := int.of_nat (n+1) in 
+  let m' := has_div.div m (abs k) in 
+  atom.le (m' * i) (int.sign k :: list.map (λ x, m' * x) ks)
+| m (atom.le i (int.neg_succ_of_nat n :: ks)) :=
+  let k := int.neg_succ_of_nat n in 
   let m' := has_div.div m (abs k) in 
   atom.le (m' * i) (int.sign k :: list.map (λ x, m' * x) ks)
 | m (atom.dvd d i (0::ks)) := (atom.dvd d i (0::ks)) 
-| m (atom.dvd d i (k::ks)) := 
+| m (atom.dvd d i (int.of_nat (n+1) :: ks)) := 
+  let k := int.of_nat (n+1) in 
+  let m' := has_div.div m k in 
+  atom.dvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
+| m (atom.dvd d i (int.neg_succ_of_nat n ::ks)) := 
+  let k := int.neg_succ_of_nat n in 
   let m' := has_div.div m k in 
   atom.dvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
 | m (atom.ndvd d i (0::ks)) := (atom.ndvd d i (0::ks)) 
-| m (atom.ndvd d i (k::ks)) := 
+| m (atom.ndvd d i (int.of_nat (n+1) :: ks)) := 
+  let k := int.of_nat (n+1) in 
   let m' := has_div.div m k in 
   atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
-| m a := a 
+| m (atom.ndvd d i (int.neg_succ_of_nat n :: ks)) := 
+  let k := int.neg_succ_of_nat n in 
+  let m' := has_div.div m k in 
+  atom.ndvd (m' * d) (m' * i) (1 :: list.map (λ x, m' * x) ks)
+| m (atom.le i []) := (atom.le i [])
+| m (atom.dvd d i []) := (atom.dvd d i []) 
+| m (atom.ndvd d i []) := (atom.ndvd d i []) 
 
 def coeffs_lcm (p) := 
   int.lcms (list.map hd_coeff (atoms_dep0 int p))
@@ -85,3 +122,5 @@ def qe_cooper_one (p : fm atom) : fm atom :=
 def sqe_cooper := λ x, qe_cooper_one (hd_coeffs_one x)
 
 def qe_cooper := lift_nnf_qe int sqe_cooper
+
+end lia
