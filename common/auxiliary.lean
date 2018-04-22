@@ -113,6 +113,8 @@ begin
   apply decidable.is_false (not_not_intro H)
 end
 
+lemma iff_iff_and_or_not_and_not {p q : Prop} : (p ↔ q) ↔ (p ∧ q) ∨ (¬ p ∧ ¬ q) := sorry
+
 lemma iff_not_not {p : Prop} : p ↔ ¬¬p := 
 iff.intro (not_not_intro) (classical.by_contradiction)
 
@@ -180,3 +182,4 @@ do papply ``(eq.trans), papply pe
 meta def swap_goals : tactic unit :=
 do g1::g2::gs ← get_goals,
    set_goals (g2::g1::gs)
+

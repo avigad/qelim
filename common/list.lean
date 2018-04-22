@@ -23,8 +23,14 @@ begin unfold zip_pad end
 @[simp] def map_mul [has_mul α] (a) (as : list α) : list α :=
 list.map (λ x, a * x) as
 
+@[simp] def map_neg [has_neg α] (as : list α) : list α :=
+list.map (λ x, -x) as
+
 def comp_add [has_zero α] [has_add α] (as1 as2 : list α) : list α := 
 list.map (λ xy, prod.fst xy + prod.snd xy) (list.zip_pad 0 0 as1 as2)
+
+def comp_sub [has_zero α] [has_neg α] [has_add α] (as1 as2 : list α) : list α := 
+comp_add as1 (map_neg as2)
 
 def dot_prod [has_zero α] [has_add α] [has_mul α] (as1 as2 : list α) : α := 
 list.sum (list.map (λ xy, prod.fst xy * prod.snd xy) (list.zip_pad 0 0 as1 as2))

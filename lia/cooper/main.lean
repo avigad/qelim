@@ -25,6 +25,10 @@ meta def to_coeffs : expr → tactic (int × list int)
   do (i,lcfs) ← to_coeffs t, 
      (j,rcfs) ← to_coeffs s,
      return (i+j, list.comp_add lcfs rcfs)  
+| `(%%t - %%s) := 
+  do (i,lcfs) ← to_coeffs t, 
+     (j,rcfs) ← to_coeffs s,
+     return (i-j, list.comp_sub lcfs rcfs)  
 | `(%%t * %%s) := 
   do (i,lcfs) ← to_coeffs t, 
      (j,rcfs) ← to_coeffs s,
@@ -44,6 +48,12 @@ meta def to_coeffs : expr → tactic (int × list int)
 meta def to_fm : expr → tactic (fm atom) 
 | `(true) := return ⊤'
 | `(false) := return ⊥'
+| `(%%t = %%s) :=
+  do lf ← to_fm `(@has_le.le int _ %%t %%s),
+     rf ← to_fm `(@has_le.le int _ %%s %%t),
+     return (lf ∧' rf)
+| `(%%t < %%s) :=
+  to_fm `(%%t + (1 : int) ≤  %%s)
 | `(%%t ≤ %%s) :=
   do (i,lcfs) ← to_coeffs t, 
      (j,rcfs) ← to_coeffs s,
@@ -59,13 +69,16 @@ meta def to_fm : expr → tactic (fm atom)
 | `(Exists %%(expr.lam _ _ _ p)) :=
   do pf ← to_fm p, return (∃' pf)
 | (expr.pi _ _ p q) := 
-  monad.cond (is_prop p)
-    (do pf ← to_fm p, 
-        qf ← to_fm q,
-        return ((¬' pf) ∨' qf))
-    (do qf ← to_fm q, return (¬' ∃' ¬' qf))
-
-| _ := trace "Invalid input" >> failed
+  if expr.has_var p
+  then do pf ← to_fm p, 
+          qf ← to_fm q,
+          return ((¬' pf) ∨' qf)
+  else  monad.cond (is_prop p)
+         (do pf ← to_fm p, 
+             qf ← to_fm q,
+             return ((¬' pf) ∨' qf))
+         (do qf ← to_fm q, return (¬' ∃' ¬' qf))
+| e := trace e >> trace "\n Invalid input" >> failed
 
 meta def fm_to_expr (p : fm atom) : expr := 
 reflected.to_expr `(p)
@@ -166,36 +179,52 @@ do ge ← target,
    rewrite_cooper, 
    skip
 
-meta def dec_fm_core : fm atom → tactic unit 
-| ⊤' := skip
-| ⊥' := failed
-| (A' (atom.le 0 [])) := skip
-| (A' (atom.le i [])) := failed
-| (A' (atom.le _ (k::ks))) := trace "Remaining free variables" >> failed
-| (A' (atom.dvd d i [])) := 
+meta def dec_fm_core : fm atom → tactic bool
+| ⊤' := return true
+| ⊥' := return false
+| (A' (atom.le 0 [])) := return true
+| (A' (atom.le i [])) := return false
+| (A' (atom.le _ (k::ks))) := 
+  trace "Remaining free variables : le atom" >> failed
+| (A' (atom.dvd d i [])) :=
+  -- trace "Deciding : " >> trace d >> trace " | " >> trace i >>  
   match int.decidable_dvd d i with 
-  | (is_true _) := skip
-  | (is_false _) := failed
+  | (is_true _) := return true
+  | (is_false _) := return false
   end
-| (A' (atom.dvd _ _ (k::ks))) := trace "Remaining free variables" >> failed
+| (A' (atom.dvd _ _ (k::ks))) := 
+  trace "Remaining free variables : dvd atom " >> failed
 | (A' (atom.ndvd d i [])) := 
   match int.decidable_dvd d i with 
-  | (is_true _) := failed
-  | (is_false _) := skip
+  | (is_true _) := return false
+  | (is_false _) := return true
   end
-| (A' (atom.ndvd _ _ (k::ks))) := trace "Remaining free variables" >> failed
-| (p ∧' q) := dec_fm_core p >> dec_fm_core q 
-| (p ∨' q) := dec_fm_core p <|> dec_fm_core q
-| (¬' p) := trace "Remaining negations" >> failed
+| (A' (atom.ndvd d i (k::ks))) := 
+  -- trace "Coeffs : " >> trace (k::ks) >>
+  trace "Remaining free variables : ndvd atom" >> failed
+| (p ∧' q) := 
+  do bp ← dec_fm_core p,
+     bq ← dec_fm_core q, 
+     return $ bp && bq
+| (p ∨' q) := 
+  do bp ← dec_fm_core p,
+     bq ← dec_fm_core q, 
+     return $ bp || bq
+| (¬' p) := 
+  do bp ← dec_fm_core p, return (bnot bp)
 | (∃' p) := trace "Remaining quantifiers" >> failed
  
 meta def dec_fm (p : fm atom) : tactic unit := 
-dec_fm_core p >> admit 
+monad.cond (dec_fm_core p) admit failed
 
 meta def cooper' : tactic unit :=
-do ge ← target, 
-   f ← to_fm ge,
-   -- trace $ qe_cooper f,
+do `[try {simp only [imp_iff_not_or, iff_iff_and_or_not_and_not, ge, gt]}],
+   ge ← target, 
+   -- trace "Formula before QE : ",
+   f ← to_fm ge, 
+   -- trace f, trace "\n", 
+   -- trace "Formula after QE : ",
+   -- trace $ qe_cooper f, trace "\n", 
    dec_fm $ qe_cooper f
 
 lemma forall_iff_not_exists_not {α : Type} {p : α → Prop}
@@ -203,19 +232,30 @@ lemma forall_iff_not_exists_not {α : Type} {p : α → Prop}
   (∀ (x : α), p x) ↔ (¬ ∃ x, ¬ p x) :=
 by simp
 
-example : ∃ (x y z : int), y + z ≤ (2 * 5) * (x) := 
+lemma modus_ponens {p q} (h : p → q) (hp : p) : q := h hp
+
+#check tactic.rewrite
+meta def bar (xe ye : expr) : tactic unit :=
+do x ← eval_expr int xe, 
+   y ← eval_expr int ye, 
+   let z := x * y in
+   do hn ← mk_fresh_name,
+      he ← to_expr ``(%%xe * %%ye = %%`(z)) >>= assert hn, 
+      papply ``(eq.refl _),
+      rewrite_target he,
+      skip
+
+example (x y z w : int) : 2 * 3 ≤ (((w + x) + y) + z) := 
 begin
-  cooper',
+  apply modus_ponens,
+  --rewrite int.lt_iff_add_one_le, 
+  simp [int.coe_nat_inj],
+  --bar `(2 : int) `(3 : int),
+  skip
 end
 
 #exit
 
-example : ∃ (x : int), 5 ≤ x ∨ 5 ≤ -x :=
-begin
-  cooper'
-end
-
-#exit
 
 example : ∃ (x y : int), 0 ≤ 1 * x + 2 * y :=
 begin 
