@@ -1,4 +1,4 @@
-import .correctness
+import .preprocess
 
 open lia tactic
 
@@ -20,30 +20,6 @@ meta def to_rhs : expr → tactic (list int)
 | `(- %%(expr.var n)) := return (list.update_nth_force [] n (-1) 0)
 | _ := trace "Invalid RHS" >> failed
 
-meta def to_coeffs : expr → tactic (int × list int) 
-| `(%%t + %%s) := 
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     return (i+j, list.comp_add lcfs rcfs)  
-| `(%%t - %%s) := 
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     return (i-j, list.comp_sub lcfs rcfs)  
-| `(%%t * %%s) := 
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     if (∀ (c : int), c ∈ lcfs → c = 0)
-     then return (i*j, list.map_mul i rcfs)
-     else if (∀ (c : int), c ∈ rcfs → c = 0)
-          then return (j*i, list.map_mul j lcfs)
-          else trace "Nonlinear term" >> failed
-| `(- %%t) := 
-  do (i,cfs) ← to_coeffs t,
-     return (-i, list.map_neg cfs)
-| (expr.var n) := return (0, list.update_nth_force [] n 1 0)
-| c := 
-  do z ← eval_expr int c, 
-     return (z, [])
 
 meta def to_fm : expr → tactic (fm atom) 
 | `(true) := return ⊤'
@@ -232,9 +208,6 @@ lemma forall_iff_not_exists_not {α : Type} {p : α → Prop}
   (∀ (x : α), p x) ↔ (¬ ∃ x, ¬ p x) :=
 by simp
 
-lemma modus_ponens {p q} (h : p → q) (hp : p) : q := h hp
-
-#check tactic.rewrite
 meta def bar (xe ye : expr) : tactic unit :=
 do x ← eval_expr int xe, 
    y ← eval_expr int ye, 
@@ -245,14 +218,9 @@ do x ← eval_expr int xe,
       rewrite_target he,
       skip
 
-example (x y z w : int) : 2 * 3 ≤ (((w + x) + y) + z) := 
-begin
-  apply modus_ponens,
-  --rewrite int.lt_iff_add_one_le, 
-  simp [int.coe_nat_inj],
-  --bar `(2 : int) `(3 : int),
-  skip
-end
+lemma add_assoc' {α : Type} [add_semigroup α] {a b c : α} : 
+  a + (b + c) = a + b + c :=
+by rewrite add_assoc a b c
 
 #exit
 

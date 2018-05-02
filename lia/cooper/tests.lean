@@ -3,8 +3,11 @@ import .main
 /- Theorems -/
 
 example : ∀ (x y : int), ¬ (2 * x + 1 = 2 * y) :=
-by cooper'
+begin
+  normalize_goal,
+end
 
+#exit
 example : ∀ (x : int), ∃ (y : int), (2 * y ≤ x ∧ x < 2 * (y + 1)) := 
 by cooper' 
 
