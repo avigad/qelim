@@ -2,6 +2,11 @@ import .nat ...mathlib.data.int.basic
 
 namespace int
 
+lemma le_iff_zero_le_sub (a b) : a ≤ b ↔ (0 : int) ≤ b - a := 
+begin
+  rewrite le_sub, simp
+end
+
 lemma abs_dvd (x y : int) : has_dvd.dvd (abs x) y ↔ has_dvd.dvd x y :=
 begin rewrite abs_eq_nat_abs, apply nat_abs_dvd end
 

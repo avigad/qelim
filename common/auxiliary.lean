@@ -1,5 +1,12 @@
 variables {α β γ : Type}
 
+lemma le_iff_le (x1 x2 y1 y2 : int) : 
+  x1 = x2 → y1 = y2 → 
+  (x1 ≤ y1 ↔ x2 ≤ y2) := 
+begin
+  intros h1 h2, rewrite h1, rewrite h2
+end
+
 lemma or_of_not_imp_right {p q} : (¬ q → p) → p ∨ q :=
 begin
   intro h, cases (classical.em q) with hq hq,
@@ -113,7 +120,15 @@ begin
   apply decidable.is_false (not_not_intro H)
 end
 
-lemma iff_iff_and_or_not_and_not {p q : Prop} : (p ↔ q) ↔ (p ∧ q) ∨ (¬ p ∧ ¬ q) := sorry
+lemma iff_iff_and_or_not_and_not {p q : Prop} : (p ↔ q) ↔ (p ∧ q) ∨ (¬ p ∧ ¬ q) := 
+begin
+  apply iff.intro; intro h, cases classical.em p with hp hp,
+  apply or.inl (and.intro hp (h.elim_left hp)),
+  apply or.inr (and.intro hp _), intro hq, apply hp (h.elim_right hq),
+  cases h with h h; cases h with hp hq,
+  apply iff.intro; intro hc; assumption,
+  apply iff.intro; intro hc; contradiction
+end
 
 lemma iff_not_not {p : Prop} : p ↔ ¬¬p := 
 iff.intro (not_not_intro) (classical.by_contradiction)
@@ -157,6 +172,10 @@ end
 
 def map_neg [has_neg α] (l : list α) : list α := 
 list.map (λ x, -x) l 
+
+def spaces : nat → string  
+| 0 := ""
+| (k+1) := " " ++ spaces k 
 
 open tactic
 

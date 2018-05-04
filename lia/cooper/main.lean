@@ -2,6 +2,8 @@ import .preprocess
 
 open lia tactic
 
+
+
 meta instance : has_reflect (fm atom) :=
 by mk_has_reflect_instance
 
@@ -20,20 +22,21 @@ meta def to_rhs : expr → tactic (list int)
 | `(- %%(expr.var n)) := return (list.update_nth_force [] n (-1) 0)
 | _ := trace "Invalid RHS" >> failed
 
+meta def rhs_to_coeffs : expr → tactic (list int) 
+| `((%%(expr.var n) * %%ze) + %%te) := 
+  do zs ← rhs_to_coeffs te, 
+     z ← eval_expr int ze, 
+     return $ list.update_nth_force zs n z 0
+| `(@has_zero.zero int _) := return []
+| _ := trace "Invalid RHS" >> failed
 
 meta def to_fm : expr → tactic (fm atom) 
 | `(true) := return ⊤'
 | `(false) := return ⊥'
-| `(%%t = %%s) :=
-  do lf ← to_fm `(@has_le.le int _ %%t %%s),
-     rf ← to_fm `(@has_le.le int _ %%s %%t),
-     return (lf ∧' rf)
-| `(%%t < %%s) :=
-  to_fm `(%%t + (1 : int) ≤  %%s)
-| `(%%t ≤ %%s) :=
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     return $ A' (atom.le (i - j) (list.comp_sub rcfs lcfs))
+| `(%%ze ≤ %%te) :=
+  do z ← eval_expr int ze, 
+     zs ← rhs_to_coeffs te,
+     return $ A' (atom.le z zs)
 | `(%%p ∧ %%q) :=
   do pf ← to_fm p, qf ← to_fm q,
      return (pf ∧' qf)
@@ -44,25 +47,41 @@ meta def to_fm : expr → tactic (fm atom)
   do pf ← to_fm p, return (¬' pf)
 | `(Exists %%(expr.lam _ _ _ p)) :=
   do pf ← to_fm p, return (∃' pf)
-| (expr.pi _ _ p q) := 
-  if expr.has_var p
-  then do pf ← to_fm p, 
-          qf ← to_fm q,
-          return ((¬' pf) ∨' qf)
-  else  monad.cond (is_prop p)
-         (do pf ← to_fm p, 
-             qf ← to_fm q,
-             return ((¬' pf) ∨' qf))
-         (do qf ← to_fm q, return (¬' ∃' ¬' qf))
+-- | (expr.pi _ _ p q) := 
+--   if expr.has_var p
+--   then do pf ← to_fm p, 
+--           qf ← to_fm q,
+--           return ((¬' pf) ∨' qf)
+--   else  monad.cond (is_prop p)
+--          (do pf ← to_fm p, 
+--              qf ← to_fm q,
+--              return ((¬' pf) ∨' qf))
+--          (do qf ← to_fm q, return (¬' ∃' ¬' qf))
 | e := trace e >> trace "\n Invalid input" >> failed
+
+#check @iff.elim_left
+--lemma of_of_I (f : fm atom) {q} : ((I f (@list.nil int)) ↔ q) → (I f (@list.nil int)) → q := id
+
+meta def cooper : tactic unit :=
+do normalize_goal,
+   fe ← target >>= to_fm,
+   papply ``(@iff.elim_left (@I atom int _ %%`(fe) []) _ _ _), 
+   -- intro_fresh,
+   -- trace "Before show_iff : ",
+   -- trace_state, 
+   show_iff (target >>= trace),
+   --rewrite_target_pexpr ``(add_zero),
+   -- unfold_I, 
+   -- prove_ex_iff_ex,
+   -- rewrite_cooper, 
+   skip
+
+
+#exit
 
 meta def fm_to_expr (p : fm atom) : expr := 
 reflected.to_expr `(p)
 
-def f0 := (∃' (A' atom.le 0 [1] ∧' A' atom.le 0 [-1]))
-
-lemma of_I_iff (f : fm atom) {q} : ((I f (@list.nil int)) ↔ q) → (I f (@list.nil int)) → q :=
-λ h, h^.elim_left
 
 instance : decidable_eq (fm atom) :=
 by mk_dec_eq_instance
@@ -116,6 +135,7 @@ meta def rewrite_filter_map_cons_some :=
 meta def prove_ex_iff_ex :=
 `[repeat {apply ex_iff_ex, intro x}, simp, refl]
 
+#check qe_cooper_prsv
 meta def rewrite_cooper :=
 `[rewrite iff.symm (qe_cooper_prsv _ _ _)]
 
@@ -146,14 +166,6 @@ meta def foo : tactic unit :=
 <|> show_dvd
 <|> show_le
 
-meta def cooper : tactic unit :=
-do ge ← target, 
-   f ← to_fm ge,
-   papply ``(of_I_iff %%`(f)), 
-   unfold_I, 
-   prove_ex_iff_ex,
-   rewrite_cooper, 
-   skip
 
 meta def dec_fm_core : fm atom → tactic bool
 | ⊤' := return true
@@ -193,6 +205,10 @@ meta def dec_fm_core : fm atom → tactic bool
 meta def dec_fm (p : fm atom) : tactic unit := 
 monad.cond (dec_fm_core p) admit failed
 
+
+#exit
+
+
 meta def cooper' : tactic unit :=
 do `[try {simp only [imp_iff_not_or, iff_iff_and_or_not_and_not, ge, gt]}],
    ge ← target, 
@@ -202,11 +218,6 @@ do `[try {simp only [imp_iff_not_or, iff_iff_and_or_not_and_not, ge, gt]}],
    -- trace "Formula after QE : ",
    -- trace $ qe_cooper f, trace "\n", 
    dec_fm $ qe_cooper f
-
-lemma forall_iff_not_exists_not {α : Type} {p : α → Prop}
-[∀ (x : α), decidable (p x)] :
-  (∀ (x : α), p x) ↔ (¬ ∃ x, ¬ p x) :=
-by simp
 
 meta def bar (xe ye : expr) : tactic unit :=
 do x ← eval_expr int xe, 
