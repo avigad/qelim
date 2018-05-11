@@ -23,3 +23,6 @@ meta def print_expr : nat → expr → tactic unit
 | k (expr.mvar n m e') :=  
   pad_print k "mvar" >> print_expr (k+2) e' 
 | k e := pad_print k e.to_string
+
+meta def rewrite_target_pexpr (pe : pexpr) :=
+to_expr pe >>= rewrite_target

@@ -1,81 +1,16 @@
-import .correctness ...common.tauto ...common.algebra ...common.int
+import .correctness ...common.tauto ...common.algebra ...common.int ...common.tactic
 
-open tactic
+open lia tactic
 
-variable {α : Type}
+meta instance : has_reflect (fm atom) :=
+by mk_has_reflect_instance
 
-meta def elim_defs : tactic unit :=
-`[repeat {simp only 
-   [imp_iff_not_or, iff_iff_and_or_not_and_not]},
-  repeat {simp only 
-   [ge, gt, forall_iff_not_exists_not,
-    int.lt_iff_add_one_le, le_antisymm_iff]}]
-
-meta def to_coeffs : expr → tactic (int × list int) 
-| `(%%t + %%s) := 
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     return (i+j, list.comp_add lcfs rcfs)  
-| `(%%t - %%s) := 
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     return (i-j, list.comp_sub lcfs rcfs)  
-| `(%%t * %%s) := 
-  do (i,lcfs) ← to_coeffs t, 
-     (j,rcfs) ← to_coeffs s,
-     if (∀ (c : int), c ∈ lcfs → c = 0)
-     then return (i*j, list.map_mul i rcfs)
-     else if (∀ (c : int), c ∈ rcfs → c = 0)
-          then return (j*i, list.map_mul j lcfs)
-          else trace "Nonlinear term" >> failed
-| `(- %%t) := 
-  do (i,cfs) ← to_coeffs t,
-     return (-i, list.map_neg cfs)
-| (expr.var n) := return (0, list.update_nth_force [] n 1 0)
-| c := 
-  do z ← eval_expr int c, 
-     return (z, [])
-
-meta def coeffs_to_expr : nat → list int → tactic expr 
-| _ [] := expr.of_int `(int) 0
-| k (z::zs) := 
-  do ze ← expr.of_int `(int) z,
-     rhs ← coeffs_to_expr (k+1) zs, 
-     adde ← to_expr ``(@has_add.add int _),
-     mule ← to_expr ``(@has_mul.mul int _),
-     return $ expr.mk_app adde [(expr.mk_app mule [(expr.mk_var k), ze]), rhs]
-
-meta def normal_form : expr → tactic expr 
-| `(%%pe ∧ %%qe) := 
-  do pe' ← normal_form pe, 
-     qe' ← normal_form qe, 
-     return `(%%pe' ∧ %%qe')
-| `(%%pe ∨ %%qe) := 
-  do pe' ← normal_form pe, 
-     qe' ← normal_form qe, 
-     return `(%%pe' ∨ %%qe')
-| `(¬ %%pe) :=
-  do pe' ← normal_form pe, 
-     return `(¬ %%pe')
-| `(Exists %%(expr.lam n m b pe)) :=
-  do pe' ← normal_form pe,
-     to_expr ``(Exists %%(expr.lam n m b pe'))
-| `(%%te ≤ %%se)  := 
-  do (i,lcfs) ← to_coeffs te, 
-     (j,rcfs) ← to_coeffs se,
-     ce ← expr.of_int `(int) (i - j),
-     rhs ← coeffs_to_expr 0 (list.comp_sub rcfs lcfs),
-     to_expr ``(%%ce ≤ %%rhs)
-| e := trace "Invalid input 4 : " >> trace e >> failed
-
-meta def rewrite_target_pexpr (pe : pexpr) :=
-to_expr pe >>= rewrite_target
 
 meta def get_lhs : tactic expr := 
-do `((_ ≤ %%lhs) ↔ _) ← target, return lhs 
+do `(%%lhs = _) ← target, return lhs 
 
 meta def get_rhs : tactic expr := 
-do `(_ ↔ (_ ≤ %%rhs)) ← target, return rhs 
+do `(_ = %%rhs) ← target, return rhs 
 
 meta def rep_lhs (t : expr → tactic unit) : tactic unit :=
 repeat (get_lhs >>= t)
@@ -85,159 +20,241 @@ repeat (get_rhs >>= t)
 
 meta def iter_rhs (t : expr → tactic unit) : expr → tactic unit 
 | `(%%xe + %%ye) := 
-  t xe <|> iter_rhs ye 
+  t ye <|> iter_rhs xe 
 | _ := failed 
 
 meta def rep_iter_rhs (t : expr → tactic unit) : tactic unit :=
 repeat (get_rhs >>= iter_rhs t)
 
-meta def group_right : tactic unit := 
-do 
-   t ← target >>= whnf, 
-   match t with 
-   | `(_ ↔ (%%te ≤ %%se)) :=
-     do 
-        rewrite_target_pexpr ``(int.le_iff_zero_le_sub %%te %%se),
-        rhs ← get_rhs, 
-        rewrite_target_pexpr ``(eq.symm (add_zero %%rhs))
-   -- | `(%%te ↔ %%se) :=
-   --   trace "Iff Other : " >> whnf te >>= trace >> whnf se >>= trace
-   | _ := trace "Invalid input" >> failed
-   end
+meta def elim_defs : tactic unit :=
+`[repeat {simp only 
+   [imp_iff_not_or, iff_iff_and_or_not_and_not]},
+  repeat {simp only 
+   [ge, gt, forall_iff_not_exists_not,
+    int.lt_iff_add_one_le, le_antisymm_iff]}]
 
-meta def get_vars : expr → tactic (list expr) 
-| `(%%te + %%se) := 
-  do xes ← get_vars te,
-     yes ← get_vars se,
-     return (xes ∪ yes)
-| `(%%te * %%se) := 
-  do xes ← get_vars te,
-     yes ← get_vars se,
-     return (xes ∪ yes)
-| `(- %%te) := get_vars te 
-| te := 
-  if expr.is_local_constant te 
-  then return [te]
-  else return []
+meta def expr_to_coeffs : expr → tactic (int × list int) 
+| `(%%t + %%s) := 
+  do (i,lcfs) ← expr_to_coeffs t, 
+     (j,rcfs) ← expr_to_coeffs s,
+     return (i+j, list.comp_add lcfs rcfs)  
+| `(%%t - %%s) := 
+  do (i,lcfs) ← expr_to_coeffs t, 
+     (j,rcfs) ← expr_to_coeffs s,
+     return (i-j, list.comp_sub lcfs rcfs)  
+| `(%%t * %%s) := 
+  do (i,lcfs) ← expr_to_coeffs t, 
+     (j,rcfs) ← expr_to_coeffs s,
+     if (∀ (c : int), c ∈ lcfs → c = 0)
+     then return (i*j, list.map_mul i rcfs)
+     else if (∀ (c : int), c ∈ rcfs → c = 0)
+          then return (j*i, list.map_mul j lcfs)
+          else trace "Nonlinear term" >> failed
+| `(- %%t) := 
+  do (i,cfs) ← expr_to_coeffs t,
+     return (-i, list.map_neg cfs)
+| (expr.var n) := return (0, list.update_nth_force [] n 1 0)
+| c := 
+  do z ← eval_expr int c, 
+     return (z, [])
 
-meta def is_const_term : expr → bool 
-| `(%%xe * %%ye) := 
-  is_const_term xe && is_const_term ye
-| `(- %%xe) := is_const_term xe 
-| e := bnot $ expr.is_local_constant e
+meta def expr_to_fm : expr → tactic (fm atom) 
+| `(true) := return ⊤'
+| `(false) := return ⊥'
+| `(%%te ≤ %%se) :=
+  do (i,ks) ← expr_to_coeffs te, 
+     (j,ms) ← expr_to_coeffs se,
+     return $ A' (atom.le (i - j) (list.comp_sub ms ks))
+| `(%%p ∧ %%q) :=
+  do pf ← expr_to_fm p, qf ← expr_to_fm q,
+     return (pf ∧' qf)
+| `(%%p ∨ %%q) :=
+  do pf ← expr_to_fm p, qf ← expr_to_fm q,
+     return (pf ∨' qf)
+| `(¬ %%p) :=
+  do pf ← expr_to_fm p, return (¬' pf)
+| `(Exists %%(expr.lam _ _ _ p)) :=
+  do pf ← expr_to_fm p, return (∃' pf)
+| `(Exists (has_le.le %%te)) :=
+  do (i,ks) ← expr_to_coeffs te, 
+     return $ ∃' (A' (atom.le i (list.comp_sub [1] (0::ks))))
+-- | (expr.pi _ _ p q) := 
+--   if expr.has_var p
+--   then do pf ← expr_to_fm p, 
+--           qf ← expr_to_fm q,
+--           return ((¬' pf) ∨' qf)
+--   else  monad.cond (is_prop p)
+--          (do pf ← expr_to_fm p, 
+--              qf ← expr_to_fm q,
+--              return ((¬' pf) ∨' qf))
+--          (do qf ← expr_to_fm q, return (¬' ∃' ¬' qf))
+| e := trace "\n Invalid input : " >> trace e >> failed
 
-meta def pull_const_core : expr → tactic unit  
-| `(%%xe + %%yze) :=
-  if is_const_term xe 
-  then pull_const_core yze
-  else match yze with 
-       | `(%%ye + %%ze) :=
-         if is_const_term ye
-         then rewrite_target_pexpr ``(add_left_comm %%xe %%ye %%ze)
-         else pull_const_core yze
+lemma le_iff_le_of_zero_eq (a b c d : int) :
+  (0 = 0 + (b - a) - (d - c)) → (a ≤ b ↔ c ≤ d) := 
+begin
+  intro h, unfold has_le.le, unfold int.le,
+  -- rewrite zero_add at h,
+  rewrite eq_sub_iff_add_eq at h,
+  simp only [zero_add] at h, rewrite h
+end
+
+meta def pull_add_up :=   
+`[simp only 
+   [add_assoc', mul_add, add_mul,
+    sub_eq_add_neg, neg_add]]
+
+meta def pull_const_right : expr → tactic unit  
+| `(%%xye + %%ze) :=
+  if expr.has_local ze 
+  then match xye with 
+       | `(%%xe + %%ye) :=
+         if expr.has_local ye
+         then pull_const_right xye
+         else rewrite_target_pexpr ``(add_right_comm %%xe %%ye %%ze)
        | _ := failed 
        end
+  else pull_const_right xye
 | _ := failed 
 
-meta def pull_consts : tactic unit :=
-rep_rhs pull_const_core
+meta def pull_consts_right : tactic unit :=
+rep_rhs pull_const_right
 
-meta def shift_const_core : expr → tactic unit  
-| `(%%xe + %%yze) :=
-  if is_const_term xe 
-  then rewrite_target_pexpr ``(iff.symm (@sub_le_iff_le_add' _ _ _ %%xe _))
-  else failed
+meta def shift_const : expr → tactic unit  
+| `(%%xe + %%ye) :=
+  -- trace "Enter shift_const : " >> trace xe >> trace ye >> 
+  if expr.has_local ye 
+  then failed
+  else 
+       papply ``(@eq_add_of_sub_eq _ _ _ %%xe %%ye) 
+       >> skip
 | _ := failed
 
 meta def shift_consts : tactic unit := 
-rep_rhs shift_const_core
+rep_rhs shift_const
 
-meta def pull_var : expr → tactic unit 
-| `(%%xe * %%yze) := 
-  if expr.is_local_constant xe 
-  then failed
-  else match yze with 
-       | `(%%ye * %%ze) := 
-         if expr.is_local_constant ye 
-         then rewrite_target_pexpr ``(mul_comm_assoc %%xe %%ye %%ze)
-         else pull_var yze 
-       | _ := trace "Invalid input 1" >> failed
-       end
-| xe := failed 
-
-meta def pull_vars : tactic unit := 
-rep_iter_rhs pull_var
-
-meta def term_mul_one : expr → tactic unit 
-| `(%%te * 1) := failed
-| te := to_expr ``(eq.symm (mul_one %%te))
-        >>= rewrite_target
-
-meta def terms_mul_one : tactic unit := 
-rep_iter_rhs term_mul_one >> `[simp only [mul_assoc]]
+meta def elim_consts := 
+   pull_consts_right >> 
+   shift_consts
 
 meta def factor_neg_one : expr → tactic unit
 | `(%%te * %%se) :=
   factor_neg_one te <|> factor_neg_one se
 | `(- 1) := failed 
 | `(- %%te) := 
-  rewrite_target_pexpr ``(eq.symm (mul_neg_one %%te))
+  rewrite_target_pexpr ``(eq.symm (neg_one_mul %%te))
 | _ := failed
 
 meta def factor_neg_ones : tactic unit := 
-rep_iter_rhs factor_neg_one >> `[simp only [mul_assoc]]
+rep_iter_rhs factor_neg_one >> `[simp only [mul_assoc']]
 
-meta def merge_vars_core : expr → tactic unit  
-| `(%%xce + %%ydte) :=
-  match xce, ydte with 
-  | `(%%xe * %%ce), `(%%yde + %%te) := 
-    match yde with 
-    | `(%%ye * %%de) := 
+meta def term_one_mul : expr → tactic unit 
+| `(1 * %%te) := failed
+| te := to_expr ``(eq.symm (one_mul %%te))
+        >>= rewrite_target
+
+meta def terms_one_mul : tactic unit := 
+rep_iter_rhs term_one_mul >>
+ `[simp only [mul_assoc']] >>
+skip
+
+meta def pull_var : expr → tactic unit 
+| `(%%xye * %%ze) := 
+  -- trace "Pull_var left term : " >> trace xye >>
+  -- trace "Pull_var right term : " >> trace ze >>
+  if expr.is_local_constant ze 
+  then failed
+  else 
+       match xye with 
+       | `(%%xe * %%ye) := 
+         if expr.is_local_constant ye 
+         then rewrite_target_pexpr ``(mul_comm_assoc %%xe %%ye %%ze)
+         else pull_var xye
+       | e := trace "Invalid input 1 : " >> trace e >> failed
+       end
+| xe := failed 
+
+meta def pull_vars : tactic unit := 
+rep_iter_rhs pull_var
+
+meta def factor_terms_core : expr → tactic unit  
+| `(%%tcxe + %%dye) :=
+  match tcxe, dye with 
+  | `(%%te + %%cxe), `(%%de * %%ye) := 
+    match cxe with 
+    | `(%%ce * %%xe) := 
       match cmp xe ye with 
       | ordering.lt :=
-        merge_vars_core ydte  
+        factor_terms_core tcxe  
       | ordering.eq :=
-        rewrite_target_pexpr ``(mul_add_mul_add %%xe %%ce %%de %%te)
+        rewrite_target_pexpr ``(mul_add_mul_add %%te %%ce %%xe %%de)
       | ordering.gt :=
         rewrite_target_pexpr 
-          ``(add_left_comm (%%xe * %%ce) (%%ye * %%de) %%te)
+          ``(add_right_comm %%te %%cxe %%dye)
       end
     | _ := trace "Invalid input 2" >> failed 
     end
-  | `(%%xe * %%ce), `(has_zero.zero _) := failed 
-  | te', se := trace "Invalid input 3" >> failed 
+  | `(has_zero.zero _), _ := failed 
+  | _, _ := trace "Invalid input 3 : " >> 
+            trace tcxe >> trace dye >>
+            failed 
   end
 | _ := failed
 
-meta def merge_vars_right : tactic unit :=
-rep_rhs merge_vars_core
+lemma elim_zero_coeff (t s c x : int) : 
+  c = 0 → t = s → t = s + (c * x)  :=
+begin intro h, rewrite h, simp, end
 
-meta def merge_vars_left : tactic unit :=
-rep_lhs merge_vars_core
+meta def cancel_term : expr → tactic unit  
+| `(%%se + (%%ce * %%xe)) :=
+  -- trace "Before cancel_term : " >>  
+  papply ``(elim_zero_coeff _ %%se %%ce %%xe (eq.refl _) _) >> 
+  -- trace "Success"
+    skip
+| _ := failed
 
-meta def normalize_le : tactic unit :=
-do group_right,
-   `[simp only 
-      [add_assoc, mul_add, add_mul, 
-       sub_eq_add_neg, neg_add]],
-   pull_consts,
-   shift_consts,
-   factor_neg_ones,
-   terms_mul_one,
+meta def factor_terms : tactic unit :=
+rep_rhs factor_terms_core
+
+meta def cancel_terms : tactic unit :=
+rep_rhs cancel_term
+
+meta def elim_vars := 
+do factor_neg_ones,
+   terms_one_mul,
+   -- trace "Calling pull_vars", target >>= trace,
    pull_vars,
-   merge_vars_right,
+   -- trace "Finished pull_vars", target >>= trace,
+   factor_terms,
+   -- trace "After factor_terms", target >>= trace,
+   cancel_terms,
+   -- trace "After cancel_terms", target >>= trace,
    skip
 
+meta def simp_dot_prod := 
+`[simp [list.dot_prod, list.map, list.zip_pad]] 
+
+lemma eq_of_eq_zero_add (x y : int) :
+  x = 0 + y → x = y := by simp 
+
+meta def normalize_le : tactic unit :=
+do papply ``(le_iff_le_of_zero_eq),
+   simp_dot_prod,
+   papply ``(eq_of_eq_zero_add),
+   pull_add_up
+   
 meta def show_le_iff_le : tactic unit := 
-do `(%%x1 ≤ %%y1 ↔ %%x2 ≤ %%y2) ← target, 
-   papply ``(le_iff_le %%x1 %%x2 %%y1 %%y2 
-            (by {try {simp}; refl}) 
-            (by {try {simp}; refl})),
+do -- `(%%x1 ≤ %%y1 ↔ %%x2 ≤ %%y2) ← target, 
+   normalize_le,
+   -- trace "After normalize_le : ", target >>= trace, 
+   elim_consts,
+   -- trace "After elim_consts : ", target >>= trace, 
+   elim_vars,
+   papply ``(eq.refl _),
    skip
 
 meta def show_iff (show_atom : tactic unit) : tactic unit := 
-do 
-   `(%%pe ↔ %%qe) ← target,
+do `(%%pe ↔ %%qe) ← target,
    npe ← whnf pe, nqe ← whnf qe,
    match npe, nqe with
    | `(%%pe' → false), `(%%qe' → false) := 
@@ -254,19 +271,15 @@ do
      tactic.seq
        (papply ``(and_iff_and  %%p1e %%q1e %%p2e %%q2e _ _) >> skip)
        show_iff
-   | _, _ := show_atom
+   | _, _ := 
+     -- trace "Calling show_atom : " >>
+     -- target >>= trace >> 
+     show_atom
    end 
 
-meta def normalize_les_core : tactic unit := 
-show_iff (do normalize_le,
-             merge_vars_left,
-             show_le_iff_le)
-
-meta def normalize_les : tactic unit := 
-do te ← target,
-   nte ← normal_form te, 
-   papply ``(@iff.elim_left %%nte %%te _ _),
-   normalize_les_core,
-   skip
-
-meta def normalize_goal := elim_defs >> normalize_les
+meta def reflect_goal : tactic unit := 
+do elim_defs,
+   te ← target,
+   fe ← expr_to_fm te,
+   papply ``(@iff.elim_left (@I atom int _ %%`(fe) []) %%te _ _),
+   show_iff show_le_iff_le
