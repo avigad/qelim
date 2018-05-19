@@ -1,3 +1,5 @@
+/- Test cases for cooper, from John Harrison's Handbook of Practical Logic and Automated Reasoning. -/
+
 import .main
 
 set_option profiler true
@@ -5,6 +7,12 @@ set_option profiler true
 /- Theorems -/
 
 open tactic lia
+
+example : ∃ (x : int), x < 1 := 
+by cooper
+
+example : ∀ (x : int), ∃ (y : int), y = x + 1 := 
+by cooper_vm
 
 example : ∀ (x : int), ∃ (y : int), (2 * y ≤ x ∧ x < 2 * (y + 1)) := 
 by cooper_vm

@@ -5,7 +5,6 @@ open lia tactic
 meta instance : has_reflect (fm atom) :=
 by mk_has_reflect_instance
 
-
 meta def get_lhs : tactic expr := 
 do `(%%lhs = _) ← target, return lhs 
 
@@ -244,14 +243,8 @@ do papply ``(le_iff_le_of_zero_eq),
    pull_add_up
    
 meta def show_le_iff_le : tactic unit := 
-do -- `(%%x1 ≤ %%y1 ↔ %%x2 ≤ %%y2) ← target, 
-   normalize_le,
-   -- trace "After normalize_le : ", target >>= trace, 
-   elim_consts,
-   -- trace "After elim_consts : ", target >>= trace, 
-   elim_vars,
-   papply ``(eq.refl _),
-   skip
+do normalize_le, elim_consts, elim_vars,
+   papply ``(eq.refl _), skip
 
 meta def show_iff (show_atom : tactic unit) : tactic unit := 
 do `(%%pe ↔ %%qe) ← target,

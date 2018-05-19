@@ -27,8 +27,6 @@ I (list_conj ps) xs = list.all_true (list.map (λ p, I p xs) ps)
     apply H, apply or.inr, apply Hq 
   end
 
-  #check @disj
-
 def qe_prsv (β : Type) [atom_type α β] (qe : list α → fm α) (as : list α) : Prop := 
   ∀ (bs : list β), ((I (qe as) bs) ↔ (∃ x, ∀ a ∈ as, (val (x::bs) a)))
 
